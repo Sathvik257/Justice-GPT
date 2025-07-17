@@ -1,77 +1,53 @@
-# justice-gpt
+⚖️ Justice GPT
+Justice-GPT is an AI-powered legal assistant that helps users identify relevant Indian Penal Code (IPC) sections based on textual crime descriptions. It leverages large language models like Google Gemini to provide legal reasoning, explanations, and references in plain language.
 
-# Gemini AI Crime Case Generator
+🚀 Features
+🔍 Analyze criminal scenarios and return applicable IPC sections.
+🤖 Uses Google Gemini AI for natural language understanding.
+📚 Provides reasoning behind the applied legal sections.
+🌐 Web-based frontend built using Vite + React.
+🧠 Custom prompt tuning for legal accuracy and relevance.
+📁 Project Structure
+justice-gpt/ ├── public/ # Static files (favicons, manifest, etc.) ├── src/ │ ├── assets/ # Icons, images, or static visual content │ ├── components/ # React components (Navbar, Footer, etc.) │ ├── pages/ # Main pages (Home, Chat, About) │ ├── api/ # API integration (Gemini calls) │ ├── App.jsx # App entry point │ ├── main.jsx # Vite main render │ └── index.css # Global styles ├── .env # Environment variables (API keys) ├── .gitignore # Files and folders to ignore in Git ├── package.json # Project metadata and dependencies ├── vite.config.js # Vite configuration └── README.md # Project overview and setup guide
 
-## Basic Description
-The Gemini AI Crime Case Generator is a web-based application that collects user-submitted crime incident details and generates an educational case analysis based on the Indian Constitution. The project is designed as a Retrieval-Augmented Generation (RAG) system to assist in understanding legal concepts in an accessible and interactive manner.
+🛠️ Installation & Setup
+# 1. Clone the repository
+git clone https://github.com/Sathvik257/Justice-GPT.git
+cd Justice-GPT
+
+# 2. Install dependencies
+npm install
+
+# 3. Create a .env file in the root directory
+touch .env
+
+# 4. Add your Gemini API key to .env
+GEMINI_API_KEY=your_api_key_here
+
+# 5. Start the development server
+npm run dev
+---
+
+💡 Visit http://localhost:5173 to view the app locally.
 
 ---
 
-## Technologies Used
+### ✅ 2. **Sample Prompts, Tech Stack & Future Scope**
+```markdown
+## 💬 Sample Prompts
 
-### Frontend:
-- **React**: For building the user interface.
-- **TypeScript**: Ensures type safety and reduces runtime errors.
-- **Tailwind CSS**: Provides responsive and modern styling.
+```text
+"Someone broke into my house at night and stole my valuables."
+"A person stabbed another during a fight, and the victim died."
+"Someone threatened me and demanded money over call."
+📦 Tech Stack
+.⚛️ React + Vite
+.🎨 Tailwind CSS
+.🧠 Google Gemini API
+.🛠️ Node.js (optional backend)
 
-### Backend:
-- **Vite**: Development server and build tool for optimized performance.
-- **Gemini API**: Integrates AI-powered case analysis and legal insights.
+📌 Future Scope
+.📜 IPC database integration
+.🗣️ Voice input support
+.🔐 Secure legal advisory layer
 
-### Other:
-- **Environment Variables**: Secured sensitive API keys via `.env` files.
-
----
-
-## Features
-
-1. **Educational Legal Analysis**:
-   - Maps user-submitted incident details to relevant Indian Constitutional articles.
-   - Provides case analysis using AI-generated insights from Gemini API.
-
-2. **Dynamic Content**:
-   - Fetches real-time responses from Gemini AI to analyze and present educational data.
-
-3. **Responsive Design**:
-   - Works seamlessly on desktops, tablets, and mobile devices.
-
-4. **Secure Environment**:
-   - Utilizes environment variables to protect API keys and configurations.
-
-5. **Loading States and Error Handling**:
-   - Displays loading indicators and manages errors effectively for smooth user experience.
-
----
-
-## How It Works
-
-1. **User Interaction**:
-   - The user fills out a form detailing an incident.
-   - Submits the form for analysis.
-
-2. **AI Integration**:
-   - The application sends the form data to the Gemini API using a secured API key.
-   - Gemini API analyzes the input and returns relevant articles and legal considerations.
-
-3. **Display of Results**:
-   - The application processes the AI’s response.
-   - Presents the educational analysis with citations from the Indian Constitution.
-
-4. **Error Handling**:
-   - If the API key is missing or invalid, users are notified with an error message.
-   - Displays fallback messages in case of unexpected errors.
-
----
-
-## Screenshots
-![](https://github.com/hackice20/justice-gpt/blob/main/Screenshot%202025-01-05%20124906.png)
-
-![](https://github.com/hackice20/justice-gpt/blob/main/Screenshot%202025-01-05%20124934.png)
-
-![](https://github.com/hackice20/justice-gpt/blob/main/Screenshot%202025-01-05%20124951.png)
-
-## License
-This project is licensed under the **MIT License**, allowing for open use, modification, and distribution with proper attribution.
-
-"# Justice-GPT" 
-"# Justice-GPT" 
