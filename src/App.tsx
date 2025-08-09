@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Scale, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CaseForm } from './components/CaseForm';
 import { Disclaimer } from './components/Disclaimer';
 import { RelatedArticles } from './components/RelatedArticles';
 import { AIAnalysis } from './components/AIAnalysis';
 import { analyzeCaseWithAI } from './lib/gemini';
-import type { CaseInfo } from './types';
+import type { CaseInfo, LawyerCaseInfo, CommonPersonCaseInfo } from './types';
+import WelcomeScreen from './components/WelcomeScreen';
+import LanguageSelection from './components/LanguageSelection';
+import PersonalDetailsForm from './components/PersonalDetailsForm';
+import RoleSelection from './components/RoleSelection';
+import { LawyerCaseForm } from './components/LawyerCaseForm';
+import { CommonPersonCaseForm } from './components/CommonPersonCaseForm';
 
 const translations = {
   en: {
@@ -108,92 +113,6 @@ const fadeInUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.7 } },
 };
 
-// Personal Details Form Component
-function PersonalDetailsForm({ onSubmit, t }: { onSubmit: (details: any) => void, t: Record<string, string> }) {
-  const [name, setName] = useState('');
-  const [age, setAge] = useState('');
-  const [email, setEmail] = useState('');
-  const [contact, setContact] = useState('');
-  const [error, setError] = useState('');
-
-  function validateEmail(email: string) {
-    // Simple email regex
-    return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
-  }
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-    if (!validateEmail(email)) {
-      setError("Please include an '@' in the email address. Email is missing an '@'.");
-      return;
-    }
-    onSubmit({ name, age, email, contact });
-  }
-
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="w-full max-w-md bg-white/90 p-8 rounded-2xl shadow-xl flex flex-col gap-6 mx-auto"
-    >
-      <h2 className="text-2xl font-bold text-indigo-700 mb-2 text-center">{t.personalDetails}</h2>
-      <div>
-        <label className="block text-sm font-medium text-indigo-700 mb-1">{t.name}</label>
-        <input
-          type="text"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          required
-          className="w-full px-4 py-2 border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-300 transition-all shadow-sm"
-          placeholder={t.name}
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-indigo-700 mb-1">Email</label>
-        <input
-          // type="email" // Remove browser validation
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          className="w-full px-4 py-2 border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-300 transition-all shadow-sm"
-          placeholder="Email"
-        />
-        {error && (
-          <div className="text-red-600 text-sm mt-1">{error}</div>
-        )}
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-indigo-700 mb-1">Contact</label>
-        <input
-          type="text"
-          value={contact}
-          onChange={e => setContact(e.target.value)}
-          required
-          className="w-full px-4 py-2 border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-300 transition-all shadow-sm"
-          placeholder="Contact"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-indigo-700 mb-1">{t.age}</label>
-        <input
-          type="number"
-          value={age}
-          onChange={e => setAge(e.target.value)}
-          required
-          min="1"
-          className="w-full px-4 py-2 border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-300 transition-all shadow-sm"
-          placeholder={t.age}
-        />
-      </div>
-      <button
-        type="submit"
-        className="w-full py-3 bg-indigo-700 text-white font-bold rounded-lg shadow-lg text-lg transition-all duration-300 hover:bg-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-300"
-      >
-        {t.continue}
-      </button>
-    </form>
-  );
-}
-
 // Placeholder for sending email notification to owner
 function sendOwnerNotification(details: any, caseInfo: CaseInfo | null) {
   // TODO: Implement backend or email service integration
@@ -205,6 +124,7 @@ function sendOwnerNotification(details: any, caseInfo: CaseInfo | null) {
 const steps = [
   'Welcome',
   'Personal Details',
+  'Role Selection',
   'Case Info',
   'Analysis',
 ];
@@ -266,6 +186,7 @@ function App() {
   const [showWelcome, setShowWelcome] = useState(true);
   const [language, setLanguage] = useState<'en' | 'hi' | 'te' | null>(null);
   const [personalDetails, setPersonalDetails] = useState<any | null>(null);
+  const [userRole, setUserRole] = useState<'lawyer' | 'common' | null>(null);
   const [caseInfo, setCaseInfo] = useState<CaseInfo | null>(null);
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -297,15 +218,48 @@ function App() {
   // Determine current step for progress stepper
   let currentStep = 0;
   if (!showWelcome && !personalDetails) currentStep = 1;
-  if (!showWelcome && personalDetails && !caseInfo) currentStep = 2;
-  if (!showWelcome && personalDetails && caseInfo) currentStep = 3;
+  if (!showWelcome && personalDetails && !userRole) currentStep = 2;
+  if (!showWelcome && personalDetails && userRole && !caseInfo) currentStep = 3;
+  if (!showWelcome && personalDetails && userRole && caseInfo) currentStep = 4;
 
   const handlePersonalDetailsSubmit = (details: any) => {
     setPersonalDetails(details);
     // Optionally notify owner here if you want
   };
 
-  const handleSubmit = async (info: CaseInfo) => {
+  const handleRoleSelect = (role: 'lawyer' | 'common') => {
+    setUserRole(role);
+  };
+
+  const handleLawyerSubmit = async (info: LawyerCaseInfo) => {
+    setCaseInfo(info);
+    setIsAnalyzing(true);
+    setShowAnalysis(false);
+    setShowSuccess(false);
+    try {
+      const aiAnalysis = await analyzeCaseWithAI(info);
+      setAnalysis(aiAnalysis);
+      setIsAnalyzing(false);
+      setShowSuccess(true);
+      // Save to history
+      setCaseHistory(prev => [{ caseInfo: info, analysis: aiAnalysis }, ...prev].slice(0, 20));
+      if (personalDetails) {
+        sendOwnerNotification(personalDetails, info);
+      }
+      // Show success animation for 2 seconds, then show analysis
+      setTimeout(() => {
+        setShowSuccess(false);
+        setShowAnalysis(true);
+      }, 2000);
+    } catch (error) {
+      console.error('Error:', error);
+      setAnalysis('Failed to analyze case. Please try again.');
+      setShowAnalysis(true);
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleCommonPersonSubmit = async (info: CommonPersonCaseInfo) => {
     setCaseInfo(info);
     setIsAnalyzing(true);
     setShowAnalysis(false);
@@ -401,202 +355,50 @@ function App() {
       {/* Welcome Page - always first */}
       <AnimatePresence>
         {showWelcome && (
-          <motion.div
-            key="welcome"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.8 }}
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-indigo-800 via-purple-700 to-pink-600"
-          >
-            <motion.div
-              initial={{ y: -60, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2, type: 'spring', stiffness: 120 }}
-              className="flex flex-col items-center w-full px-4"
-            >
-              <Scale className="h-24 w-24 md:h-32 md:w-32 text-white drop-shadow-2xl mb-8 animate-bounce" />
-              <motion.h1
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.4, type: 'spring', stiffness: 120 }}
-                className="text-6xl md:text-8xl font-extrabold text-white drop-shadow-2xl mb-6 tracking-tight text-center max-w-5xl w-full"
-              >
-                {translations.en.appName}
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="text-2xl md:text-3xl text-pink-200 font-semibold mb-4 text-center max-w-3xl w-full"
-              >
-                Where everyone will receive justice and legal guidance.
-              </motion.p>
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-                className="text-2xl md:text-3xl text-pink-100 font-medium mb-12 text-center max-w-4xl w-full"
-              >
-                {translations.en.subtitle}
-              </motion.p>
-              <motion.button
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setShowWelcome(false)}
-                className="px-10 py-4 bg-white text-indigo-700 font-bold rounded-full shadow-lg text-2xl transition-all duration-300 hover:bg-pink-200 hover:text-indigo-900 focus:outline-none focus:ring-4 focus:ring-pink-300"
-              >
-                {translations.en.enter}
-              </motion.button>
-            </motion.div>
-          </motion.div>
+          <WelcomeScreen
+            onEnter={() => setShowWelcome(false)}
+            appName={translations.en.appName}
+            subtitle={translations.en.subtitle}
+            enterLabel={translations.en.enter}
+          />
         )}
       </AnimatePresence>
-
       {/* Language Selection Page - after welcome */}
       <AnimatePresence>
         {!showWelcome && !language && (
-          <motion.div
-            key="lang-select"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.7 }}
-            className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-gradient-to-br from-indigo-800 via-purple-700 to-pink-600"
-          >
-            <motion.h2
-              initial={{ y: -30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-3xl md:text-4xl font-bold text-white mb-8 text-center"
-            >
-              {translations.en.selectLanguage}
-            </motion.h2>
-            <div className="flex gap-6 mb-8">
-              <motion.button
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setLanguage('en')}
-                className="px-8 py-4 bg-white text-indigo-700 font-bold rounded-xl shadow-lg text-xl transition-all duration-300 hover:bg-pink-200 hover:text-indigo-900"
-              >
-                {translations.en.english}
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setLanguage('hi')}
-                className="px-8 py-4 bg-white text-indigo-700 font-bold rounded-xl shadow-lg text-xl transition-all duration-300 hover:bg-pink-200 hover:text-indigo-900"
-              >
-                {translations.en.hindi}
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setLanguage('te')}
-                className="px-8 py-4 bg-white text-indigo-700 font-bold rounded-xl shadow-lg text-xl transition-all duration-300 hover:bg-pink-200 hover:text-indigo-900"
-              >
-                {translations.en.telugu}
-              </motion.button>
-                </div>
-            {/* Back button to welcome page */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setShowWelcome(true)}
-              className="mt-2 px-6 py-2 bg-white text-indigo-700 font-semibold rounded-full shadow transition-all duration-300 hover:bg-pink-200 hover:text-indigo-900"
-            >
-              ← Back
-            </motion.button>
-          </motion.div>
+          <LanguageSelection
+            onSelect={setLanguage}
+            onBack={() => setShowWelcome(true)}
+            t={translations.en}
+          />
         )}
       </AnimatePresence>
-
       {/* Personal Details Form - after language selection */}
       <AnimatePresence>
         {!showWelcome && language && !personalDetails && (
           <div className="flex-grow flex items-center justify-center min-h-screen bg-gradient-to-br from-indigo-800 via-purple-700 to-pink-600">
-            <motion.form
-              onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
-                e.preventDefault();
-                setError('');
-                if (!/^([^@\s]+)@([^@\s]+)\.([^@\s]+)$/.test(email)) {
-                  setError("Please include an '@' in the email address. Email is missing an '@'.");
-                  return;
-                }
-                handlePersonalDetailsSubmit({ name, age, email, contact });
-              }}
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 40 }}
-              transition={{ duration: 0.7, type: 'spring' }}
-              className="w-full max-w-md bg-white/70 backdrop-blur-2xl p-6 rounded-2xl shadow-2xl flex flex-col gap-6 mx-auto border border-white/40 mt-4"
-              style={{ boxShadow: '0 8px 40px 0 rgba(80,0,120,0.10), 0 1.5px 16px 0 rgba(236,72,153,0.10)' }}
-            >
-              <h2 className="text-2xl font-extrabold text-indigo-800 mb-4 text-center tracking-tight drop-shadow-sm">
-                {t.personalDetails}
-              </h2>
-              <div>
-                <label className="block text-lg font-semibold text-indigo-700 mb-2">{t.name}</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  required
-                  className="w-full px-5 py-3 border border-indigo-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-300 transition-all shadow-sm text-lg bg-white/80"
-                  placeholder={t.name}
-                />
-              </div>
-              <div>
-                <label className="block text-lg font-semibold text-indigo-700 mb-2">Email</label>
-                <input
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full px-5 py-3 border border-indigo-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-300 transition-all shadow-sm text-lg bg-white/80"
-                  placeholder="Email"
-                />
-                {error && (
-                  <div className="text-red-600 text-sm mt-1">{error}</div>
-                )}
-              </div>
-              <div>
-                <label className="block text-lg font-semibold text-indigo-700 mb-2">{t.contact}</label>
-                <input
-                  type="text"
-                  value={contact}
-                  onChange={e => setContact(e.target.value)}
-                  required
-                  className="w-full px-5 py-3 border border-indigo-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-300 transition-all shadow-sm text-lg bg-white/80"
-                  placeholder={t.contact}
-                />
-              </div>
-              <div>
-                <label className="block text-lg font-semibold text-indigo-700 mb-2">{t.age}</label>
-                <input
-                  type="number"
-                  value={age}
-                  onChange={e => setAge(e.target.value)}
-                  required
-                  min="1"
-                  className="w-full px-5 py-3 border border-indigo-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-300 transition-all shadow-sm text-lg bg-white/80"
-                  placeholder={t.age}
-                />
-              </div>
-              <motion.button
-                type="submit"
-                whileHover={{ scale: 1.03, backgroundColor: '#a21caf' }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full py-4 bg-indigo-700 text-white font-extrabold rounded-xl shadow-lg text-2xl transition-all duration-300 hover:bg-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-300 mt-2"
-              >
-                {t.continue}
-              </motion.button>
-            </motion.form>
+            <PersonalDetailsForm
+              onSubmit={handlePersonalDetailsSubmit}
+              onBack={() => setLanguage(null)}
+              t={t}
+            />
           </div>
         )}
       </AnimatePresence>
 
+      {/* Role Selection - after personal details */}
+      <AnimatePresence>
+        {!showWelcome && language && personalDetails && !userRole && (
+          <RoleSelection
+            onSelect={handleRoleSelect}
+            onBack={() => setPersonalDetails(null)}
+            t={t}
+          />
+        )}
+      </AnimatePresence>
       {/* Main App Content */}
       <AnimatePresence>
-        {!showWelcome && language && personalDetails && (
+        {!showWelcome && language && personalDetails && userRole && (
           <motion.div
             key="main"
             initial={{ opacity: 0 }}
@@ -633,12 +435,12 @@ function App() {
               </div>
             </motion.header>
 
-            {/* Back button to language selection */}
+            {/* Back button to role selection */}
             <div className="container mx-auto px-4 mt-4 mb-2 flex justify-start">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => setLanguage(null)}
+                onClick={() => setUserRole(null)}
                 className="px-5 py-2 bg-white text-indigo-700 font-semibold rounded-full shadow transition-all duration-300 hover:bg-pink-200 hover:text-indigo-900"
               >
                 ← Back
@@ -659,10 +461,13 @@ function App() {
                     initial={{ x: -60, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ delay: 1, duration: 0.7 }}
-                    className="flex-1 bg-white/90 p-8 rounded-2xl shadow-md border border-indigo-100 max-w-2xl mx-auto"
+                    className="flex-1 max-w-4xl mx-auto"
                   >
-                    <h2 className="text-2xl font-bold mb-6 text-indigo-700">{t.caseInfo}</h2>
-                    <CaseForm onSubmit={handleSubmit} t={t} />
+                    {userRole === 'lawyer' ? (
+                      <LawyerCaseForm onSubmit={handleLawyerSubmit} t={t} />
+                    ) : (
+                      <CommonPersonCaseForm onSubmit={handleCommonPersonSubmit} t={t} />
+                    )}
                   </motion.div>
                   {/* Remove inline AIAnalysis and RelatedArticles, show only in overlay */}
         </div>
