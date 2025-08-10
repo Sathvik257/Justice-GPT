@@ -11,3 +11,15 @@ export interface CaseInfo {
   date: string;
   location: string;
 }
+
+export interface LawyerCaseInfo extends CaseInfo {
+  position: string;
+  clientName: string;
+  caseType: string;
+}
+
+export interface CommonPersonCaseInfo extends CaseInfo {
+  activity: string;
+  relationship: string;
+  witnesses: string;
+}
