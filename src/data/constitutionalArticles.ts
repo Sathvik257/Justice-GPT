@@ -43,6 +43,11 @@ export const constitutionalArticles = [
     description: 'Whoever causes the death of any person by doing any rash or negligent act not amounting to culpable homicide, shall be punished.',
     type: 'hit and run'
   },
+  // Add commonly referenced homicide/murder sections used in analysis UI
+  { number: 'IPC 299', title: 'Culpable Homicide', description: 'Defines culpable homicide and lays the foundation for homicide offences.' },
+  { number: 'IPC 300', title: 'Murder', description: 'Explains when culpable homicide amounts to murder.' },
+  { number: 'IPC 304', title: 'Culpable Homicide Not Amounting to Murder', description: 'Punishment for culpable homicide that does not amount to murder.' },
+  { number: 'IPC 308', title: 'Attempt to Commit Culpable Homicide', description: 'Punishment for attempt to commit culpable homicide.' },
   {
     id: '7',
     number: 'IPC 302',

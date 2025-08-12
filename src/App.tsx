@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Scale, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Disclaimer } from './components/Disclaimer';
-import { RelatedArticles } from './components/RelatedArticles';
 import { AIAnalysis } from './components/AIAnalysis';
 import { analyzeCaseWithAI } from './lib/gemini';
 import type { CaseInfo, LawyerCaseInfo, CommonPersonCaseInfo } from './types';
@@ -516,7 +515,6 @@ function App() {
                   <div className="flex-1 flex flex-col items-center justify-center w-full px-4 pb-12">
                     <div className="w-full max-w-5xl p-0 md:p-12">
                       <AIAnalysis analysis={analysis} isLoading={isAnalyzing} t={t} />
-                      <RelatedArticles />
                     </div>
                   </div>
                 </motion.div>

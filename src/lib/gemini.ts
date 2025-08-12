@@ -1,6 +1,7 @@
 // MOCKED Gemini API for local development without a real API key
 import { constitutionalArticles } from '../data/constitutionalArticles';
 
+// eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
 function detectCaseType(keywords: string): string | null {
   if ((/murder|killed|homicide|stab|shoot|poison/.test(keywords)) && (/cut|pieces|dismember|body|corpse|burial|dispose/.test(keywords))) return 'Brutal Murder / Dismemberment';
   if (/cut into pieces|dismember|body parts|brutal murder|corpse|burial|dispose|dispose of body/.test(keywords)) return 'Brutal Murder / Dismemberment';
@@ -105,6 +106,169 @@ function findRelevantArticles(caseInfo: { incidentType: string; description: str
     .filter((a): a is typeof constitutionalArticles[number] => Boolean(a));
 }
 
+// Build dynamic, case-specific procedural guidance
+function buildProceduralAspects(caseTypes: string[]): string {
+  const lines: string[] = [];
+
+  const isHeinous = caseTypes.some(t => ['Murder', 'Attempt to Murder', 'Sexual Offense', 'Robbery'].includes(t));
+  const isBailable = caseTypes.some(t => ['Theft', 'Assault', 'Criminal Intimidation / Threats', 'Landlord / Tenancy'].includes(t));
+  const isCyber = caseTypes.includes('Cybercrime');
+  const isDV = caseTypes.includes('Domestic Violence / Family');
+  const isChild = caseTypes.includes('Child Abuse / Protection');
+
+  // Jurisdiction / Trial
+  if (isHeinous || isChild) {
+    lines.push('- Jurisdiction: Sessions Court');
+    lines.push('- Trial: Warrant case procedure by Court of Session');
+  } else if (isDV) {
+    lines.push('- Jurisdiction: Magistrate court under the Protection of Women from Domestic Violence Act');
+    lines.push('- Trial: Summary/warrant procedure as applicable');
+  } else if (isCyber) {
+    lines.push('- Jurisdiction: Magistrate/Sessions (depending on sections), IT Act cognizance');
+    lines.push('- Trial: Warrant case procedure');
+  } else {
+    lines.push('- Jurisdiction: Magistrate Court');
+    lines.push('- Trial: Summary/Warrant procedure depending on offence');
+  }
+
+  // Limitation
+  if (caseTypes.includes('Murder') || caseTypes.includes('Attempt to Murder') || caseTypes.includes('Sexual Offense')) {
+    lines.push('- Limitation: No limitation (serious offences)');
+  } else {
+    lines.push('- Limitation: As per CrPC Chapter XXXVI (varies by maximum punishment)');
+  }
+
+  // Bail
+  if (caseTypes.includes('Murder') || caseTypes.includes('Attempt to Murder') || caseTypes.includes('Robbery') || caseTypes.includes('Sexual Offense')) {
+    lines.push('- Bail: Generally non‑bailable; considered on merits');
+  } else if (isBailable) {
+    lines.push('- Bail: Often bailable subject to conditions');
+  } else if (isCyber) {
+    lines.push('- Bail: Depends on invoked IT/IPC sections');
+  }
+
+  // Special procedures
+  if (isCyber) {
+    lines.push('- Procedure: Preserve digital evidence, hash values, seizure under CrPC/IT Act guidelines');
+  }
+  if (isChild) {
+    lines.push('- Special Court: POCSO Special Court; child‑friendly recording under Sec. 164 CrPC');
+  }
+  if (isDV) {
+    lines.push('- Interim Reliefs: Protection/residence/maintenance orders under DV Act');
+  }
+
+  return lines.join('\n');
+}
+
+// Build dynamic precedents based on case type
+function buildPrecedents(caseTypes: string[]): string {
+  const catalog: Record<string, string[]> = {
+    'Murder': [
+      'State of Andhra Pradesh v. Rayavarapu Punnayya (1976) — distinction between murder and culpable homicide',
+      'Virsa Singh v. State of Punjab (1958) — intention and bodily injury test',
+    ],
+    'Attempt to Murder': [
+      'State of Maharashtra v. Kashirao (2003) — ingredients of attempt under Sec. 307 IPC',
+    ],
+    'Robbery': [
+      'Shiv Kumar v. State of M.P. (1994) — robbery/dacoity principles',
+    ],
+    'Theft': [
+      'Pyare Lal Bhargava v. State of Rajasthan (1963) — meaning of “moves property”',
+    ],
+    'Cybercrime': [
+      'Shreya Singhal v. Union of India (2015) — free speech and online content',
+    ],
+    'Sexual Offense': [
+      'State of Punjab v. Gurmit Singh (1996) — testimony of prosecutrix',
+      'Patan Jamal Vali v. State of Andhra Pradesh (2021) — consent and vulnerability',
+    ],
+    'Domestic Violence / Family': [
+      'Hiral P. Harsora v. Kusum Narottamdas Harsora (2016) — scope of “respondent” under DV Act',
+    ],
+    'Child Abuse / Protection': [
+      'Alakh Alok Srivastava v. Union of India (2018) — POCSO guidelines',
+    ],
+  };
+
+  const picked = caseTypes.flatMap(t => catalog[t] ?? []);
+  if (picked.length === 0) {
+    return [
+      'K.M. Nanavati v. State of Maharashtra (1962) — burden and provocation (illustrative)',
+    ].join('\n');
+  }
+  return picked.map(p => `- ${p}`).join('\n');
+}
+
+// Build dynamic action plan
+function buildActionPlan(caseTypes: string[]): string {
+  const blocks: string[] = [];
+
+  blocks.push('1. Immediate Steps:');
+  blocks.push('   - File FIR/complaint under appropriate sections');
+  blocks.push('   - Preserve evidence and record first version promptly');
+
+  if (caseTypes.includes('Murder') || caseTypes.includes('Attempt to Murder')) {
+    blocks.push('   - Secure crime scene; call FSL; ensure post‑mortem and inquest');
+    blocks.push('   - Seize weapons/clothes; send for serology');
+  }
+  if (caseTypes.includes('Sexual Offense')) {
+    blocks.push('   - Ensure medical examination within 24 hours; Section 164 CrPC statement');
+    blocks.push('   - Provide victim compensation/support services');
+  }
+  if (caseTypes.includes('Robbery') || caseTypes.includes('Theft')) {
+    blocks.push('   - Circulate property details; check pawn/second‑hand markets; CDR/CCTV analysis');
+  }
+  if (caseTypes.includes('Cybercrime')) {
+    blocks.push('   - Preserve device logs, IPs, server data; notify platform/CERT‑In');
+  }
+  if (caseTypes.includes('Domestic Violence / Family')) {
+    blocks.push('   - Apply for protection/residence/maintenance orders; connect with Protection Officer');
+  }
+  if (caseTypes.includes('Child Abuse / Protection')) {
+    blocks.push('   - Child‑friendly procedures; statement via support person; avoid repeated examination');
+  }
+
+  blocks.push('\n2. Investigation Phase:');
+  blocks.push('   - Witness examination and collection of documentary/digital evidence');
+  if (caseTypes.includes('Cybercrime')) {
+    blocks.push('   - Forensic imaging and chain‑of‑custody documentation');
+  }
+  if (caseTypes.includes('Murder') || caseTypes.includes('Attempt to Murder')) {
+    blocks.push('   - Motive reconstruction; call records; last‑seen and recovery evidence');
+  }
+
+  blocks.push('\n3. Trial Preparation:');
+  blocks.push('   - Draft charge; prepare examination‑in‑chief and cross‑examination notes');
+  blocks.push('   - Organize exhibits with index and authenticity certificates');
+  return blocks.join('\n');
+}
+
+// Build constitutional implications with short descriptions
+function buildConstitutionalImplications(caseTypes: string[], relevant: Array<{ number: string; title: string; description?: string }>): string {
+  // If relevant list already contains constitutional articles, show those with titles
+  const constitutional = relevant.filter(a => !a.number.startsWith('IPC') && !a.number.includes('Act'));
+  if (constitutional.length > 0) {
+    return constitutional
+      .slice(0, 6)
+      .map(a => `- Article ${a.number}: ${a.title}`)
+      .join('\n');
+  }
+
+  // Otherwise infer likely articles
+  const inferred: string[] = ['21'];
+  if (caseTypes.includes('Sexual Offense') || caseTypes.includes('Domestic Violence / Family') || caseTypes.includes('Child Abuse / Protection')) inferred.push('14');
+  if (caseTypes.includes('Cybercrime')) inferred.push('19');
+  if (caseTypes.includes('Arrest/Detention')) inferred.push('22');
+  const unique = Array.from(new Set(inferred));
+  return unique
+    .map(num => constitutionalArticles.find(a => a.number === num))
+    .filter((a): a is typeof constitutionalArticles[number] => Boolean(a))
+    .map(a => `- Article ${a.number}: ${a.title}`)
+    .join('\n');
+}
+
 function getFullLabel(article: { number: string }) {
   if (article.number.startsWith('IPC')) return `IPC Section ${article.number.replace('IPC ', '')}`;
   if (article.number.startsWith('MV Act')) return `MV Act Section ${article.number.replace('MV Act ', '')}`;
@@ -182,11 +346,11 @@ export async function fetchLegalWebResults(query: string): Promise<Array<{ title
 async function crossCheckWithAPI(laws: string[]): Promise<any[]> {
   try {
     // Example API endpoints (replace with actual legal database API)
-    const apiEndpoints = {
-      indianKanoon: 'https://api.indiankanoon.org/search',
-      legalDatabase: 'https://api.legaldatabase.in/verify',
-      // Add more legal APIs as needed
-    };
+    // const apiEndpoints = {
+    //   indianKanoon: 'https://api.indiankanoon.org/search',
+    //   legalDatabase: 'https://api.legaldatabase.in/verify',
+    //   // Add more legal APIs as needed
+    // };
 
     // For now, simulate API call with realistic data
     await new Promise(resolve => setTimeout(resolve, 1500));
@@ -256,27 +420,43 @@ export async function analyzeCaseWithAI(caseInfo: {
 
   let output = '';
   
-  // Generate case summary like in the image
-  output += `**Identified Case Type:** ${caseTypes.length > 0 ? caseTypes.join(', ') : 'General Legal Matter'}\n\n`;
+  // Header: Case Classification (to match screenshot)
+  output += `### Case Classification\n`;
+  const caseTypeLabel = caseTypes.length > 0 ? caseTypes.join(', ') : 'General Legal Matter';
+  output += `Case Type: ${caseTypeLabel}\n`;
+  output += `Date: ${caseInfo.date}\n`;
+  output += `Location: ${caseInfo.location}\n\n`;
 
   if (relevantArticles.length > 0) {
-    // Relevant Laws/Articles section (like in image)
-    output += '**Relevant Laws/Articles**\n\n';
+    // Relevant IPC Sections
+    output += '### Relevant IPC Sections\n\n';
+    output += 'Primary Sections:\n';
     
     // Show primary laws with clean formatting
-    const primaryLaws = relevantArticles.slice(0, 6); // Show up to 6 laws
+    const primaryLaws = relevantArticles.slice(0, 8); // Show up to 8 laws
     
     for (const art of primaryLaws) {
-      const verification = apiVerification.find(v => v.number === art.number);
-      const statusIcon = verification?.verified ? '✅' : '⚠️';
-      
-      // Format like: ⚖️ - ⚖️ **IPC Section 392**: Robbery
-      output += `⚖️ - ⚖️ **${getFullLabel(art)}**: ${art.title}\n\n`;
-      output += `_${art.description}_\n\n`;
+      const label = getFullLabel(art);
+      output += `- ${label}: ${art.title}\n`;
+    }
+
+    // Attempt/related sections if present
+    const attemptRelated = relevantArticles
+      .slice(8)
+      .map(a => `- ${getFullLabel(a)}: ${a.title}`)
+      .join('\n');
+    if (attemptRelated) {
+      output += `\nAttempt Cases:\n${attemptRelated}\n`;
     }
 
     // Analysis section
-    output += '**Analysis**\n\n';
+    output += '\n### Detailed Legal Analysis\n\n';
+    output += 'Mens Rea Elements:\n';
+    output += '- Intention to cause death\n- Knowledge that act is likely to cause death\n- Absence of lawful excuse\n\n';
+    output += 'Actus Reus Elements:\n';
+    output += '- Causing death of another person\n- Voluntary act or omission\n- Causal connection between act and death\n\n';
+    output += 'Evidence Requirements:\n';
+    output += '1. Medical evidence of cause of death\n2. Witness testimony\n3. Forensic evidence\n4. Motive and opportunity\n\n';
     output += `Based on the information provided (Type: ${caseInfo.incidentType}, Description: ${caseInfo.description}, Date: ${caseInfo.date}, Location: ${caseInfo.location}), the following sections/articles are likely to be relevant:\n\n`;
     
     // Show why each law applies
@@ -287,11 +467,21 @@ export async function analyzeCaseWithAI(caseInfo: {
       }
     }
 
-    // Next Steps section
-    output += '**Next Steps**\n\n';
-    output += '• Consult a qualified legal professional\n';
-    output += '• Gather all relevant evidence and documentation\n';
-    output += '• Report to the police if not already done\n\n';
+    // Procedural Aspects (dynamic)
+    output += '### Procedural Aspects\n\n';
+    output += buildProceduralAspects(caseTypes) + '\n\n';
+
+    // Legal Precedents (dynamic)
+    output += '### Legal Precedents\n\n';
+    const precedents = buildPrecedents(caseTypes);
+    output += precedents.startsWith('-') ? precedents + '\n' : `- ${precedents}\n`;
+    output += '- State of Punjab v. Gurmit Singh (1996)\n\n';
+
+    output += '### Professional Action Plan\n\n';
+    output += buildActionPlan(caseTypes) + '\n\n';
+
+    output += '### Constitutional Implications\n\n';
+    output += buildConstitutionalImplications(caseTypes, relevantArticles) + '\n\n';
 
     // API verification status
     if (apiVerification.length > 0) {
