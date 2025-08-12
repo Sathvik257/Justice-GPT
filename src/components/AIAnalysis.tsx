@@ -27,19 +27,23 @@ const GlossaryTooltip: React.FC<{ term: string; children: React.ReactNode }> = (
 export const AIAnalysis: React.FC<AIAnalysisProps> = ({ analysis, isLoading, t }) => {
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Split the analysis into sections for better formatting
-  let summary = '', caseType = '', laws = '', analysisSection = '', nextSteps = '', teachersNote = '';
+  // Split the analysis into sections for better formatting (aligned to new structured output)
+  let classification = '', laws = '', detailedAnalysis = '', procedural = '', precedents = '', actionPlan = '', constitutional = '', teachersNote = '';
   if (analysis) {
-    const summaryMatch = analysis.match(/SUMMARY[\s\S]*?\n\n/);
-    summary = summaryMatch ? summaryMatch[0].replace('> ', '').trim() : '';
-    const caseTypeMatch = analysis.match(/\*\*Detected Case Type[s]?:\*\*[\s\S]*?\n\n/);
-    caseType = caseTypeMatch ? caseTypeMatch[0].trim() : '';
-    const lawsMatch = analysis.match(/\*\*Relevant Laws\/Articles.*?\*\*[\s\S]*?\n\n/);
-    laws = lawsMatch ? lawsMatch[0].replace(/\*\*Relevant Laws\/Articles.*?\*\*/, '').trim() : '';
-    const analysisMatch = analysis.match(/\*\*Analysis:\*\*[\s\S]*?\n\n/);
-    analysisSection = analysisMatch ? analysisMatch[0].replace('**Analysis:**', '').trim() : '';
-    const nextStepsMatch = analysis.match(/\*\*Suggested Next Steps:\*\*[\s\S]*?(?=---|$)/);
-    nextSteps = nextStepsMatch ? nextStepsMatch[0].replace('**Suggested Next Steps:**', '').trim() : '';
+    const classMatch = analysis.match(/### Case Classification[\s\S]*?(?=###|$)/);
+    classification = classMatch ? classMatch[0].replace('### Case Classification', '').trim() : '';
+    const lawsMatch = analysis.match(/### Relevant IPC Sections[\s\S]*?(?=###|$)/);
+    laws = lawsMatch ? lawsMatch[0].replace('### Relevant IPC Sections', '').trim() : '';
+    const detMatch = analysis.match(/### Detailed Legal Analysis[\s\S]*?(?=###|$)/);
+    detailedAnalysis = detMatch ? detMatch[0].replace('### Detailed Legal Analysis', '').trim() : '';
+    const procMatch = analysis.match(/### Procedural Aspects[\s\S]*?(?=###|$)/);
+    procedural = procMatch ? procMatch[0].replace('### Procedural Aspects', '').trim() : '';
+    const precMatch = analysis.match(/### Legal Precedents[\s\S]*?(?=###|$)/);
+    precedents = precMatch ? precMatch[0].replace('### Legal Precedents', '').trim() : '';
+    const planMatch = analysis.match(/### Professional Action Plan[\s\S]*?(?=###|$)/);
+    actionPlan = planMatch ? planMatch[0].replace('### Professional Action Plan', '').trim() : '';
+    const constMatch = analysis.match(/### Constitutional Implications[\s\S]*?(?=###|$)/);
+    constitutional = constMatch ? constMatch[0].replace('### Constitutional Implications', '').trim() : '';
     const teachersNoteMatch = analysis.match(/\*\*Teacher[’']s Note:\*\*[\s\S]*/);
     teachersNote = teachersNoteMatch ? teachersNoteMatch[0].replace('**Teacher’s Note:**', '').replace('**Teacher\'s Note:**', '').trim() : '';
   }
@@ -129,25 +133,19 @@ export const AIAnalysis: React.FC<AIAnalysisProps> = ({ analysis, isLoading, t }
           </motion.div>
         ) : analysis ? (
           <div className="flex flex-col gap-8 p-6 md:p-12">
-            {/* Summary Card */}
-            {summary && (
+            {/* Case Classification */}
+            {classification && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.5, type: 'spring' }}
-                className="bg-indigo-100 border-l-4 border-indigo-400 shadow-lg rounded-xl p-6 mb-2 text-indigo-900 font-bold text-xl text-left"
+                className="bg-white rounded-2xl shadow-xl p-6 border border-indigo-100"
               >
-                {summary}
+                <div className="text-2xl font-extrabold text-indigo-800 mb-2 flex items-center gap-2">
+                  <span className="text-indigo-700">⚖️</span> Case Classification
+                </div>
+                <div className="text-gray-800 whitespace-pre-line">{classification}</div>
               </motion.div>
-            )}
-            {/* Case Type */}
-            {caseType && (
-              <motion.div
-                initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3, duration: 0.5, type: 'spring' }}
-                className="text-lg font-semibold text-indigo-700 mb-2"
-              >{caseType}</motion.div>
             )}
             {/* Laws/Articles List */}
             {laws && (
@@ -156,17 +154,17 @@ export const AIAnalysis: React.FC<AIAnalysisProps> = ({ analysis, isLoading, t }
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4, duration: 0.5, type: 'spring' }}
               >
-                <div className="font-bold text-pink-700 text-lg mb-2">Relevant Laws/Articles</div>
-                <ul className="space-y-4">
+                <div className="text-2xl font-extrabold text-indigo-800 mb-2 flex items-center gap-2"><span className="text-indigo-700">⚖️</span> Relevant IPC Sections</div>
+                <ul className="space-y-3">
                   {laws.split('\n').filter(Boolean).map((law, idx) => (
                     <motion.li
                       key={idx}
                       initial={{ opacity: 0, x: 40 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.5 + 0.08 * idx, duration: 0.4, type: 'spring' }}
-                      className="flex items-start gap-3 bg-pink-50 rounded-lg p-4 shadow print:bg-white print:shadow-none"
+                      transition={{ delay: 0.5 + 0.05 * idx, duration: 0.35, type: 'spring' }}
+                      className="flex items-start gap-3 bg-white rounded-xl p-4 shadow border border-indigo-100 print:bg-white print:shadow-none"
                     >
-                      <span className="text-2xl mt-1">⚖️</span>
+                      <span className="text-xl mt-1">•</span>
                       <span className="text-base text-gray-800 whitespace-pre-line print:text-black">
                         {/* Wrap legal term with tooltip if found */}
                         <GlossaryTooltip term={law}>
@@ -178,30 +176,59 @@ export const AIAnalysis: React.FC<AIAnalysisProps> = ({ analysis, isLoading, t }
                 </ul>
               </motion.div>
             )}
-            {/* Analysis Section */}
-            {analysisSection && (
+            {/* Detailed Analysis */}
+            {detailedAnalysis && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.7, duration: 0.5, type: 'spring' }}
               >
-                <div className="font-bold text-indigo-700 text-lg mb-2">Analysis</div>
-                <div className="text-base text-gray-800 whitespace-pre-line print:text-black">{analysisSection}</div>
+                <div className="text-2xl font-extrabold text-indigo-800 mb-2 flex items-center gap-2"><span className="text-indigo-700">⚖️</span> Detailed Legal Analysis</div>
+                <div className="bg-white rounded-2xl shadow p-6 border border-indigo-100 text-base text-gray-800 whitespace-pre-line print:text-black">{detailedAnalysis}</div>
               </motion.div>
             )}
-            {/* Next Steps */}
-            {nextSteps && (
+            {/* Procedural Aspects */}
+            {procedural && (
               <motion.div
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8, duration: 0.5, type: 'spring' }}
               >
-                <div className="font-bold text-indigo-700 text-lg mb-2">Next Steps</div>
-                <ul className="list-disc ml-6 text-base text-gray-800 whitespace-pre-line print:text-black">
-                  {nextSteps.split('\n').filter(Boolean).map((step, idx) => (
-                    <li key={idx}>{step.replace(/^[-•]\s*/, '')}</li>
-                  ))}
-                </ul>
+                <div className="text-2xl font-extrabold text-indigo-800 mb-2 flex items-center gap-2"><span className="text-indigo-700">⚖️</span> Procedural Aspects</div>
+                <div className="bg-white rounded-2xl shadow p-6 border border-indigo-100 text-base text-gray-800 whitespace-pre-line print:text-black">{procedural}</div>
+              </motion.div>
+            )}
+            {/* Legal Precedents */}
+            {precedents && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.9, duration: 0.5, type: 'spring' }}
+              >
+                <div className="text-2xl font-extrabold text-indigo-800 mb-2 flex items-center gap-2"><span className="text-indigo-700">⚖️</span> Legal Precedents</div>
+                <div className="bg-white rounded-2xl shadow p-6 border border-indigo-100 text-base text-gray-800 whitespace-pre-line print:text-black">{precedents}</div>
+              </motion.div>
+            )}
+            {/* Professional Action Plan */}
+            {actionPlan && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.0, duration: 0.5, type: 'spring' }}
+              >
+                <div className="text-2xl font-extrabold text-indigo-800 mb-2 flex items-center gap-2"><span className="text-indigo-700">⚖️</span> Professional Action Plan</div>
+                <div className="bg-white rounded-2xl shadow p-6 border border-indigo-100 text-base text-gray-800 whitespace-pre-line print:text-black">{actionPlan}</div>
+              </motion.div>
+            )}
+            {/* Constitutional Implications */}
+            {constitutional && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.1, duration: 0.5, type: 'spring' }}
+              >
+                <div className="text-2xl font-extrabold text-indigo-800 mb-2 flex items-center gap-2"><span className="text-indigo-700">⚖️</span> Constitutional Implications</div>
+                <div className="bg-white rounded-2xl shadow p-6 border border-indigo-100 text-base text-gray-800 whitespace-pre-line print:text-black">{constitutional}</div>
               </motion.div>
             )}
             {/* Teacher's Note */}
