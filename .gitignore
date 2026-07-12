@@ -1,0 +1,38 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+.env
+.env.*
+!.env.example
+
+node_modules
+dist
+dist-ssr
+dist-server
+.vercel
+*.local
+
+# Raw datasets (huge, regenerable via `npm run prepare:law-data`) — the
+# generated src/data/lawsAndActs.ts is committed and used at runtime.
+data/raw/
+
+# Stray local notes / scratch files that must never be published
+*.txt
+!README.txt
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
