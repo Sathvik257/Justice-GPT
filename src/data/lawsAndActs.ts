@@ -15,7 +15,7 @@ export const lawDatasetSource = {
   name: 'Laws and Acts of India',
   provider: 'Kaggle / kausthubkannan',
   url: 'https://www.kaggle.com/datasets/kausthubkannan/laws-and-acts-of-india',
-  generatedAt: '2026-06-01T18:02:27.743Z',
+  generatedAt: '2026-08-01T10:04:28.150Z',
   records: 7655,
 } as const;
 

@@ -37,4 +37,7 @@ runNodeScript(path.join(root, 'scripts', 'generate-embeddings.ts'));
 console.log('Running retrieval accuracy evaluation...');
 runNodeScript(path.join(root, 'scripts', 'eval-accuracy.ts'));
 
+console.log('Running answer generation verification...');
+runNodeScript(path.join(root, 'scripts', 'verify-answers.ts'));
+
 console.log('Dataset training complete.');
