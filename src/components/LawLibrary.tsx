@@ -1,5 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowLeft, BookOpen, ExternalLink, Filter, Landmark, Search, Sparkles } from 'lucide-react';
+import { officialCurrentLawAnchors } from '../data/currentLegalAnchors';
+import {
+  CURRENT_LAW_MAPPING_LAST_VERIFIED_ON,
+  currentLawEquivalents,
+  getOfficialCitationForLegacyLabel,
+} from '../data/currentLawMapping';
 import {
   getLawDatasetPlaces,
   getLawDatasetSources,
@@ -7,6 +13,7 @@ import {
   searchLawDataset,
   type LawDatasetMatch,
 } from '../lib/lawDataset';
+import { LawTransitionCard } from './law/LawTransitionCard';
 
 interface LawLibraryProps {
   onStartCase: () => void;
@@ -22,6 +29,21 @@ const quickSearches = [
   'motor vehicles accident compensation',
   'tax goods services gst',
 ];
+
+const comparisonSamples = ['IPC 302', 'IPC 420', 'CrPC 154'] as const;
+
+const officialLawStatus = officialCurrentLawAnchors.map((anchor) => {
+  const actNumberById: Record<string, string> = {
+    'official-bns-2023': 'Act 45 of 2023',
+    'official-bnss-2023': 'Act 46 of 2023',
+    'official-bsa-2023': 'Act 47 of 2023',
+  };
+
+  return {
+    ...anchor,
+    actNumber: actNumberById[anchor.id] ?? 'Central Act',
+  };
+});
 
 function defaultRecords(): LawDatasetMatch[] {
   const seen = new Set<string>();
@@ -74,8 +96,8 @@ export const LawLibrary: React.FC<LawLibraryProps> = ({ onStartCase }) => {
             Indian Laws and Acts Library
           </h1>
           <p className="mt-4 max-w-3xl text-base leading-7 text-stone-600">
-            Search thousands of law and act records from the Kaggle dataset and use those matches as supporting context
-            for Gemini-assisted educational reports.
+            Search thousands of law and act records from the local index. Case reports use the strongest retrieved
+            matches as grounding context for server-side Gemini when configured and for the local fallback engine.
           </p>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -100,13 +122,91 @@ export const LawLibrary: React.FC<LawLibraryProps> = ({ onStartCase }) => {
           </div>
           <h2 className="mt-5 text-2xl font-bold text-stone-950">How it improves reports</h2>
           <p className="mt-3 text-sm leading-6 text-teal-950">
-            When a user submits facts, Justice GPT searches this law index, sends the strongest matches to Gemini,
-            and also shows dataset references inside the fallback report.
+            When a user submits facts, Justice GPT builds a privacy-conscious retrieval query, searches the local
+            embedding index, and shows the retrieved references and confidence signals inside the report.
           </p>
           <div className="mt-5 rounded-md bg-white/75 p-4 text-sm leading-6 text-stone-700">
             Dataset records are metadata references, not final legal authority. Users still need to verify current law,
             amendments, and jurisdiction.
           </div>
+        </div>
+      </section>
+
+      <section className="mt-8 rounded-lg border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wide text-emerald-800">Official current-law sources</p>
+            <h2 className="mt-1 text-2xl font-bold text-stone-950">BNS, BNSS, and BSA status</h2>
+          </div>
+          <p className="max-w-2xl text-sm leading-6 text-emerald-950">
+            Mapping table checked on {CURRENT_LAW_MAPPING_LAST_VERIFIED_ON}. Users should still verify incident-date
+            applicability, amendments, and jurisdiction before relying on any provision.
+          </p>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          {officialLawStatus.map((sourceRecord) => (
+            <article key={sourceRecord.id} className="rounded-lg border border-emerald-200 bg-white p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{sourceRecord.actNumber}</p>
+              <h3 className="mt-2 text-base font-bold leading-6 text-stone-950">{sourceRecord.title}</h3>
+              <dl className="mt-3 grid gap-2 text-sm text-stone-700">
+                <div>
+                  <dt className="font-semibold text-stone-900">Published</dt>
+                  <dd>{sourceRecord.publishedDate}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-stone-900">Enforced</dt>
+                  <dd>{sourceRecord.commencementDate}</dd>
+                </div>
+              </dl>
+              <a
+                href={sourceRecord.url}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                Open India Code
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-8 border border-ink/15 bg-paper p-5 shadow-insetPaper">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="font-mono text-xs font-black uppercase tracking-[0.24em] text-stamp-red">
+              Compare IPC vs BNS
+            </p>
+            <h2 className="mt-1 font-ledger text-2xl font-black text-ink">Living statute reference cards</h2>
+          </div>
+          <p className="max-w-xl text-sm leading-6 text-ink-faded">
+            Tap any card to flip between the legacy label and the current provision.
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {comparisonSamples.map((legacyLabel) => {
+            const equivalent = currentLawEquivalents[legacyLabel];
+            return (
+              <LawTransitionCard
+                key={legacyLabel}
+                oldLaw={{
+                  section: legacyLabel,
+                  actName: legacyLabel.startsWith('CrPC') ? 'Code of Criminal Procedure, 1973' : 'Indian Penal Code, 1860',
+                  text: 'Legacy reference shown for comparison with current criminal law.',
+                }}
+                newLaw={{
+                  section: equivalent.current,
+                  actName: equivalent.current.startsWith('BNSS')
+                    ? 'Bharatiya Nagarik Suraksha Sanhita, 2023'
+                    : 'Bharatiya Nyaya Sanhita, 2023',
+                  text: equivalent.subject,
+                  url: getOfficialCitationForLegacyLabel(legacyLabel) ?? undefined,
+                }}
+              />
+            );
+          })}
         </div>
       </section>
 

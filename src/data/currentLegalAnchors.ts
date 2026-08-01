@@ -8,7 +8,7 @@ export const officialCurrentLawAnchors: LawDatasetRecord[] = [
     place: 'Union Of India',
     publishedDate: '25-12-2023',
     commencementDate: '01-07-2024',
-    url: 'https://www.indiacode.nic.in/handle/123456789/20062?locale=en',
+    url: 'https://www.indiacode.nic.in/handle/123456789/20062?col=123456789%2F1362&view_type=search',
   },
   {
     id: 'official-bnss-2023',
@@ -17,7 +17,7 @@ export const officialCurrentLawAnchors: LawDatasetRecord[] = [
     place: 'Union Of India',
     publishedDate: '25-12-2023',
     commencementDate: '01-07-2024',
-    url: 'https://www.indiacode.nic.in/handle/123456789/21419',
+    url: 'https://www.indiacode.nic.in/handle/123456789/20099?col=123456789%2F1362&view_type=search',
   },
   {
     id: 'official-bsa-2023',
@@ -26,6 +26,6 @@ export const officialCurrentLawAnchors: LawDatasetRecord[] = [
     place: 'Union Of India',
     publishedDate: '25-12-2023',
     commencementDate: '01-07-2024',
-    url: 'https://www.indiacode.nic.in/handle/123456789/20063',
+    url: 'https://www.indiacode.nic.in/handle/123456789/20063?sam_handle=123456789%2F1362',
   },
 ];

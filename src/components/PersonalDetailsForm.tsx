@@ -11,7 +11,7 @@ interface PersonalDetailsFormProps {
 }
 
 const fieldClass =
-  'mt-2 w-full rounded-xl border border-stone-300 bg-white px-3.5 py-3 text-base text-stone-950 shadow-sm transition placeholder:text-stone-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500';
+  'mt-2 w-full border border-ink/20 bg-paper px-3.5 py-3 text-base text-ink shadow-insetPaper transition placeholder:text-ink-faded/55 focus:border-seal-gold focus:outline-none focus:ring-2 focus:ring-seal-gold';
 
 const PersonalDetailsForm: React.FC<PersonalDetailsFormProps> = ({ onSubmit, onBack, t }) => {
   const [details, setDetails] = useState<PersonalDetails>({
@@ -57,21 +57,21 @@ const PersonalDetailsForm: React.FC<PersonalDetailsFormProps> = ({ onSubmit, onB
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="w-full max-w-2xl rounded-2xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-stone-200/50 backdrop-blur sm:p-8"
+      className="w-full border border-ink/15 bg-paper p-5 shadow-insetPaper sm:p-7"
     >
       <button
         type="button"
         onClick={onBack}
-        className="mb-6 inline-flex h-10 items-center gap-2 rounded-xl border border-stone-300 bg-white px-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+        className="mb-6 inline-flex min-h-11 items-center gap-2 border border-ink/15 bg-paper px-3 text-sm font-bold text-ink-faded transition hover:bg-paper-dark focus:outline-none focus:ring-2 focus:ring-seal-gold"
       >
         <ChevronLeft className="h-4 w-4" />
         {t.back}
       </button>
 
       <div className="mb-6">
-        <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">{t.personalDetails}</p>
-        <h1 className="mt-2 text-3xl font-extrabold text-stone-950">{t.detailsHeading}</h1>
-        <p className="mt-3 text-sm leading-6 text-stone-600">{t.detailsHelper}</p>
+        <p className="font-mono text-xs font-black uppercase tracking-[0.24em] text-stamp-red">{t.personalDetails}</p>
+        <h1 className="mt-2 font-ledger text-3xl font-black text-ink">{t.detailsHeading}</h1>
+        <p className="mt-3 text-sm leading-6 text-ink-faded">{t.detailsHelper}</p>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
@@ -143,7 +143,7 @@ const PersonalDetailsForm: React.FC<PersonalDetailsFormProps> = ({ onSubmit, onB
         type="submit"
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
-        className="btn-primary mt-7 inline-flex h-12 w-full items-center justify-center rounded-xl px-4 text-base font-bold text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+        className="btn-primary mt-7 inline-flex min-h-12 w-full items-center justify-center px-4 text-base font-black text-paper focus:outline-none focus:ring-2 focus:ring-seal-gold focus:ring-offset-2"
       >
         {t.continue}
       </motion.button>

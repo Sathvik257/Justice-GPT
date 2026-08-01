@@ -5,7 +5,7 @@ Justice GPT is a Vite + React legal education app for Indian-law case triage. It
 The app uses two knowledge paths:
 
 - Google Gemini, called through a serverless function (`/api/analyze`) so the API key stays on the server and is never shipped to the browser.
-- A local searchable law dataset generated from Kaggle's Laws and Acts of India dataset, supplemented with current India Code anchors for BNS, BNSS, and BSA, plus a curated rule engine.
+- A local retrieval layer generated from Kaggle's Laws and Acts of India dataset, supplemented with current India Code anchors for BNS, BNSS, and BSA, plus a curated rule engine.
 
 If no Gemini key is configured (or the serverless function is unavailable, e.g. during `vite dev`), the app transparently falls back to its local educational rule engine, so it is fully usable with zero secrets and zero external calls.
 
@@ -13,13 +13,19 @@ If no Gemini key is configured (or the serverless function is unavailable, e.g. 
 
 - Guided flow for lawyers and general users.
 - Structured reports with case classification, indicative laws, procedure, precedents, action steps, and constitutional implications.
-- Current Law Mapping that translates the older IPC/CrPC sections into their in-force BNS/BNSS/BSA equivalents (e.g. IPC 302 to BNS 103), shown in every report and requested from Gemini.
+- Current Law Mapping that translates the older IPC/CrPC sections into their in-force BNS/BNSS/BSA equivalents (e.g. IPC 302 to BNS 103), shown in every report with version-dated mapping metadata and official India Code section links where available.
+- "Living Statute" report animation that visually strikes through legacy IPC/CrPC labels and reveals the current BNS/BNSS provision.
+- Procedural subway map that turns FIR/complaint, investigation, chargesheet, trial, and appeal into a glanceable legal journey with a "you are here" station.
+- Mobile-first Legal Ledger UI overhaul with redacted case-file onboarding, bottom mobile navigation, section-jump report pills, and dependency-free SVG case-strength radar.
+- Trust and coverage signals that show whether a report came from Gemini or the local fallback, how many records were retrieved, and whether local coverage is strong, moderate, or thin.
+- Lightweight local RAG-style retrieval over the 7,658-record law index using query expansion, BM25-style scoring, field weighting, and phrase boosts before grounding Gemini or the fallback report.
 - Broad offence coverage in the local engine: theft, robbery, murder, assault, harassment, fraud, cybercrime, domestic violence, POCSO/child protection, sexual offences, kidnapping/abduction, extortion, stalking/voyeurism, dowry death, rash/negligent driving, defamation, and consumer/tenancy matters.
 - Secure serverless AI proxy (`/api/analyze`) so the Gemini key is never exposed in the client bundle.
 - Local report history in browser storage.
 - Searchable Law Library with 7,658 cleaned law records and current-law anchors.
-- Dataset matches are included in Gemini prompts and local fallback reports.
-- Copy and print controls for generated reports.
+- Dataset matches and official citation candidates are included in Gemini prompts and local fallback reports.
+- Copy, print, and dependency-free PDF download controls for generated reports.
+- Best-effort rate limiting and request-size protection on the `/api/analyze` proxy.
 - Safer legal disclaimers and reminders to verify current law.
 - Responsive React + Tailwind UI.
 
@@ -84,6 +90,7 @@ only the local engine runs.
 ```bash
 npm run dev
 npm run build
+npm run typecheck:all
 npm run lint
 npm run preview
 npm run prepare:law-data

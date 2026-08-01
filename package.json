@@ -10,9 +10,13 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "typecheck:server": "tsc --noEmit -p tsconfig.server.json",
+    "typecheck:all": "npm run typecheck && npm run typecheck:server",
     "lint": "eslint .",
     "preview": "vite preview",
-    "prepare:law-data": "node scripts/prepare-law-dataset.mjs"
+    "prepare:law-data": "node scripts/prepare-law-dataset.mjs",
+    "prepare:embeddings": "node scripts/generate-embeddings.ts",
+    "eval:accuracy": "node scripts/eval-accuracy.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.2.1",

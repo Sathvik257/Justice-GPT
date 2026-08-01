@@ -129,7 +129,3 @@ export const motion = {
   section: createMotionElement('section'),
   span: createMotionElement('span'),
 };
-
-export function AnimatePresence({ children }: { children: React.ReactNode; mode?: string }) {
-  return <>{children}</>;
-}

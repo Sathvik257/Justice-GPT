@@ -15,24 +15,21 @@ const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect, onBack, t }) =>
     title: string;
     description: string;
     Icon: React.ElementType;
-    emoji: string;
-    tint: string;
+    stamp: string;
   }> = [
     {
       value: 'lawyer',
       title: t.lawyerTitle,
       description: t.lawyerBody,
       Icon: Scale,
-      emoji: '👩‍⚖️',
-      tint: 'from-teal-500 to-emerald-500',
+      stamp: 'COUNSEL',
     },
     {
       value: 'common',
       title: t.commonTitle,
       description: t.commonBody,
       Icon: UserRound,
-      emoji: '🧑',
-      tint: 'from-amber-500 to-orange-500',
+      stamp: 'PUBLIC',
     },
   ];
 
@@ -42,43 +39,43 @@ const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect, onBack, t }) =>
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="mx-auto flex min-h-[calc(100vh-92px)] w-full max-w-5xl flex-col justify-center px-4 py-10"
+      className="w-full"
     >
       <button
         type="button"
         onClick={onBack}
-        className="mb-8 inline-flex h-10 w-fit items-center gap-2 rounded-xl border border-stone-300 bg-white/80 px-3 text-sm font-semibold text-stone-700 backdrop-blur transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+        className="mb-5 inline-flex min-h-11 w-fit items-center gap-2 border border-ink/15 bg-paper px-3 text-sm font-bold text-ink-faded transition hover:bg-paper-dark focus:outline-none focus:ring-2 focus:ring-seal-gold"
       >
         <ChevronLeft className="h-4 w-4" />
         {t.back}
       </button>
 
-      <div className="mb-8">
-        <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">{t.appName}</p>
-        <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-stone-950 md:text-4xl">
+      <div className="mb-6">
+        <p className="font-mono text-xs font-black uppercase tracking-[0.24em] text-stamp-red">{t.appName}</p>
+        <h1 className="mt-3 font-ledger text-3xl font-black tracking-tight text-ink md:text-4xl">
           {t.roleHeading}
         </h1>
-        <p className="mt-3 max-w-2xl text-base leading-7 text-stone-600">{t.roleHelper}</p>
+        <p className="mt-3 max-w-2xl text-base leading-7 text-ink-faded">{t.roleHelper}</p>
       </div>
 
-      <div className="stagger grid gap-4 md:grid-cols-2">
-        {roles.map(({ value, title, description, Icon, emoji, tint }) => (
+      <div className="stagger grid gap-3">
+        {roles.map(({ value, title, description, Icon, stamp }) => (
           <motion.button
             key={value}
             type="button"
             onClick={() => onSelect(value)}
-            whileHover={{ scale: 1.02 }}
+            whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.98 }}
-            className="card-interactive group relative overflow-hidden rounded-2xl border border-white/70 bg-white/85 p-6 text-left shadow-sm backdrop-blur hover:border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="group relative min-h-40 overflow-hidden border border-ink/15 bg-paper p-5 text-left shadow-insetPaper transition hover:border-seal-gold focus:outline-none focus:ring-2 focus:ring-seal-gold"
           >
-            <span className="pointer-events-none absolute right-4 top-4 text-4xl opacity-80">{emoji}</span>
-            <span
-              className={`flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br ${tint} text-white shadow-md`}
-            >
+            <span className="absolute right-3 top-3 rotate-6 border-2 border-stamp-red px-2 py-1 font-mono text-[0.62rem] font-black uppercase tracking-widest text-stamp-red/70">
+              {stamp}
+            </span>
+            <span className="flex h-14 w-14 items-center justify-center border border-ink bg-ink text-paper">
               <Icon className="h-7 w-7" />
             </span>
-            <span className="mt-5 block text-2xl font-bold text-stone-950">{title}</span>
-            <span className="mt-2 block text-sm leading-6 text-stone-600">{description}</span>
+            <span className="mt-5 block font-ledger text-2xl font-black text-ink">{title}</span>
+            <span className="mt-2 block text-sm leading-6 text-ink-faded">{description}</span>
           </motion.button>
         ))}
       </div>

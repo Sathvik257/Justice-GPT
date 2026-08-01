@@ -15,12 +15,11 @@ const LanguageSelection: React.FC<LanguageSelectionProps> = ({ onSelect, onBack,
     label: string;
     nativeLabel: string;
     helper: string;
-    emoji: string;
-    tint: string;
+    codeLabel: string;
   }> = [
-    { code: 'en', label: t.english, nativeLabel: 'English', helper: t.continueInEnglish, emoji: '🇬🇧', tint: 'from-sky-500 to-indigo-500' },
-    { code: 'hi', label: t.hindi, nativeLabel: 'हिंदी', helper: t.continueInHindi, emoji: '🇮🇳', tint: 'from-amber-500 to-orange-500' },
-    { code: 'te', label: t.telugu, nativeLabel: 'తెలుగు', helper: t.continueInTelugu, emoji: '🪷', tint: 'from-teal-500 to-emerald-500' },
+    { code: 'en', label: t.english, nativeLabel: 'English', helper: t.continueInEnglish, codeLabel: 'EN' },
+    { code: 'hi', label: t.hindi, nativeLabel: 'Hindi', helper: t.continueInHindi, codeLabel: 'HI' },
+    { code: 'te', label: t.telugu, nativeLabel: 'Telugu', helper: t.continueInTelugu, codeLabel: 'TE' },
   ];
 
   return (
@@ -29,48 +28,46 @@ const LanguageSelection: React.FC<LanguageSelectionProps> = ({ onSelect, onBack,
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="mx-auto flex min-h-[calc(100vh-92px)] w-full max-w-5xl flex-col justify-center px-4 py-10"
+      className="w-full"
     >
       <button
         type="button"
         onClick={onBack}
-        className="mb-8 inline-flex h-10 w-fit items-center gap-2 rounded-xl border border-stone-300 bg-white/80 px-3 text-sm font-semibold text-stone-700 backdrop-blur transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+        className="mb-5 inline-flex min-h-11 w-fit items-center gap-2 border border-ink/15 bg-paper px-3 text-sm font-bold text-ink-faded transition hover:bg-paper-dark focus:outline-none focus:ring-2 focus:ring-seal-gold"
       >
         <ChevronLeft className="h-4 w-4" />
         {t.back}
       </button>
 
-      <div className="mb-8">
-        <div className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-white/70 px-3 py-1 text-sm font-semibold text-teal-800 backdrop-blur">
+      <div className="mb-6">
+        <div className="inline-flex items-center gap-2 border border-stamp-red/30 bg-stamp-red/10 px-3 py-1 font-mono text-xs font-black uppercase tracking-wide text-stamp-red">
           <Languages className="h-4 w-4" />
           {t.languageBadge}
         </div>
-        <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-stone-950 md:text-4xl">
+        <h1 className="mt-4 font-ledger text-3xl font-black tracking-tight text-ink md:text-4xl">
           {t.selectLanguage}
         </h1>
-        <p className="mt-3 max-w-2xl text-base leading-7 text-stone-600">{t.languageHelper}</p>
+        <p className="mt-3 max-w-2xl text-base leading-7 text-ink-faded">{t.languageHelper}</p>
       </div>
 
-      <div className="stagger grid gap-4 sm:grid-cols-3">
+      <div className="stagger grid gap-3">
         {languageOptions.map((option) => (
           <motion.button
             key={option.code}
             type="button"
             onClick={() => onSelect(option.code)}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            className="card-interactive group min-h-40 rounded-2xl border border-white/70 bg-white/85 p-5 text-left shadow-sm backdrop-blur hover:border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            className="group min-h-32 border border-ink/15 bg-paper p-4 text-left shadow-insetPaper transition hover:border-seal-gold focus:outline-none focus:ring-2 focus:ring-seal-gold"
           >
-            <span
-              className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${option.tint} text-2xl shadow-md`}
-            >
-              {option.emoji}
+            <span className="flex h-12 w-12 items-center justify-center border border-ink bg-ink font-mono text-sm font-black text-paper">
+              {option.codeLabel}
             </span>
-            <span className="mt-4 block text-xs font-semibold uppercase tracking-wide text-teal-700">
+            <span className="mt-4 block font-mono text-xs font-black uppercase tracking-wide text-stamp-red">
               {option.label}
             </span>
-            <span className="mt-1 block text-3xl font-bold text-stone-950">{option.nativeLabel}</span>
-            <span className="mt-2 block text-sm leading-6 text-stone-600">{option.helper}</span>
+            <span className="mt-1 block font-ledger text-2xl font-black text-ink">{option.nativeLabel}</span>
+            <span className="mt-2 block text-sm leading-6 text-ink-faded">{option.helper}</span>
           </motion.button>
         ))}
       </div>

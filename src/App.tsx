@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from './lib/motion';
+import { AnimatePresence } from './lib/AnimatePresence';
+import { motion } from './lib/motion';
 import { BookOpen, Check, ChevronLeft, ClipboardList, History, Landmark, RotateCcw, X } from 'lucide-react';
 import { Disclaimer } from './components/Disclaimer';
 import { AIAnalysis } from './components/AIAnalysis';
 import { analyzeCaseWithAI } from './lib/gemini';
 import type {
+  AnalysisMetadata,
   AnalysisRecord,
   CaseSubmission,
   CommonPersonCaseInfo,
@@ -21,13 +23,33 @@ import { LawyerCaseForm } from './components/LawyerCaseForm';
 import { CommonPersonCaseForm } from './components/CommonPersonCaseForm';
 import { LawLibrary } from './components/LawLibrary';
 import { getTranslation, type Translation } from './lib/i18n';
+import { MobileBottomNav } from './components/navigation/MobileBottomNav';
+import { RedactedFlow } from './components/onboarding/RedactedFlow';
 
 type ActiveView = 'case' | 'library';
 
 const LANGUAGE_KEY = 'justice-gpt-language';
+const HISTORY_KEY = 'justice-gpt-history';
+
+function readStorage(key: string) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function loadLanguage(): Language | null {
-  const stored = localStorage.getItem(LANGUAGE_KEY);
+  const stored = readStorage(LANGUAGE_KEY);
   return stored === 'en' || stored === 'hi' || stored === 'te' ? stored : null;
 }
 
@@ -38,12 +60,30 @@ function getRecordId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function isAnalysisRecord(value: unknown): value is AnalysisRecord {
+  if (!value || typeof value !== 'object') return false;
+
+  const record = value as Partial<AnalysisRecord>;
+  const caseInfo = record.caseInfo as Partial<CaseSubmission> | undefined;
+
+  return (
+    typeof record.id === 'string' &&
+    typeof record.createdAt === 'string' &&
+    (record.role === 'lawyer' || record.role === 'common') &&
+    typeof record.analysis === 'string' &&
+    Boolean(caseInfo) &&
+    typeof caseInfo?.incidentType === 'string' &&
+    typeof caseInfo?.description === 'string' &&
+    typeof caseInfo?.location === 'string'
+  );
+}
+
 function loadHistory() {
   try {
-    const stored = localStorage.getItem('justice-gpt-history');
+    const stored = readStorage(HISTORY_KEY);
     if (!stored) return [];
     const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? (parsed as AnalysisRecord[]) : [];
+    return Array.isArray(parsed) ? parsed.filter(isAnalysisRecord).slice(0, 20) : [];
   } catch {
     return [];
   }
@@ -98,6 +138,31 @@ function ProgressStepper({ currentStep, steps }: { currentStep: number; steps: s
   );
 }
 
+function getFlowCopy(currentStep: number, t: Translation) {
+  if (currentStep === 0) {
+    return {
+      title: t.selectLanguage,
+      hint: 'Choose the intake language first. The case file preview will lift its first redaction as soon as this is set.',
+    };
+  }
+  if (currentStep === 1) {
+    return {
+      title: t.detailsHeading,
+      hint: 'Add the person using this report. These details remain local unless you clear saved reports.',
+    };
+  }
+  if (currentStep === 2) {
+    return {
+      title: t.roleHeading,
+      hint: 'Tell the app whether to frame questions for legal preparation or general guidance.',
+    };
+  }
+  return {
+    title: t.caseHeading,
+    hint: 'Enter facts, date, location, evidence, and context. The final redactions lift while the report is generated.',
+  };
+}
+
 function App() {
   const [showWelcome, setShowWelcome] = useState(true);
   const [language, setLanguage] = useState<Language | null>(loadLanguage);
@@ -105,24 +170,21 @@ function App() {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [caseInfo, setCaseInfo] = useState<CaseSubmission | null>(null);
   const [analysis, setAnalysis] = useState<string | null>(null);
+  const [analysisMetadata, setAnalysisMetadata] = useState<AnalysisMetadata | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
-  const [caseHistory, setCaseHistory] = useState<AnalysisRecord[]>([]);
+  const [caseHistory, setCaseHistory] = useState<AnalysisRecord[]>(loadHistory);
   const [showHistory, setShowHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<ActiveView>('case');
 
   useEffect(() => {
-    setCaseHistory(loadHistory());
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('justice-gpt-history', JSON.stringify(caseHistory));
+    writeStorage(HISTORY_KEY, JSON.stringify(caseHistory));
   }, [caseHistory]);
 
   const selectLanguage = (next: Language) => {
     setLanguage(next);
-    localStorage.setItem(LANGUAGE_KEY, next);
+    writeStorage(LANGUAGE_KEY, next);
   };
 
   const t: Translation = getTranslation(language);
@@ -135,10 +197,13 @@ function App() {
     if (!caseInfo || !showAnalysis) return 3;
     return 4;
   }, [caseInfo, language, personalDetails, showAnalysis, userRole]);
+  const completedSteps = Number(Boolean(language)) + Number(Boolean(personalDetails)) + Number(Boolean(userRole)) + Number(Boolean(caseInfo));
+  const flowCopy = getFlowCopy(currentStep, t);
 
   const resetCaseOnly = () => {
     setCaseInfo(null);
     setAnalysis(null);
+    setAnalysisMetadata(null);
     setShowAnalysis(false);
     setError(null);
   };
@@ -161,7 +226,8 @@ function App() {
 
     try {
       const aiAnalysis = await analyzeCaseWithAI(info);
-      setAnalysis(aiAnalysis);
+      setAnalysis(aiAnalysis.markdown);
+      setAnalysisMetadata(aiAnalysis.metadata);
       setCaseHistory((previous) =>
         [
           {
@@ -169,7 +235,8 @@ function App() {
             createdAt: new Date().toISOString(),
             role,
             caseInfo: info,
-            analysis: aiAnalysis,
+            analysis: aiAnalysis.markdown,
+            metadata: aiAnalysis.metadata,
           },
           ...previous,
         ].slice(0, 20),
@@ -186,6 +253,7 @@ function App() {
     setUserRole(record.role);
     setCaseInfo(record.caseInfo);
     setAnalysis(record.analysis);
+    setAnalysisMetadata(record.metadata ?? null);
     setShowAnalysis(true);
     setShowHistory(false);
   };
@@ -193,7 +261,7 @@ function App() {
   return (
     <div className="min-h-screen text-stone-950">
       {!showWelcome && (
-        <header className="glass-header sticky top-0 z-40 border-b border-stone-200/70">
+        <header className="glass-header sticky top-0 z-40 hidden border-b border-stone-200/70 md:block">
           <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -290,75 +358,101 @@ function App() {
           )}
 
           {!showWelcome && !language && (
-            <LanguageSelection
+            <RedactedFlow
+              key="language-flow"
+              stepTitle={flowCopy.title}
+              stepHint={flowCopy.hint}
+              completedSteps={completedSteps}
+              language={language}
+              personalDetails={personalDetails}
+              userRole={userRole}
+              caseInfo={caseInfo}
+              isProcessing={isAnalyzing}
+            >
+              <LanguageSelection
               key="language"
               onSelect={selectLanguage}
               onBack={() => setShowWelcome(true)}
               t={t}
-            />
+              />
+            </RedactedFlow>
           )}
 
           {!showWelcome && language && !personalDetails && (
-            <motion.main
-              key="details"
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mx-auto flex min-h-[calc(100vh-92px)] w-full max-w-7xl items-center justify-center px-4 py-10"
+            <RedactedFlow
+              key="details-flow"
+              stepTitle={flowCopy.title}
+              stepHint={flowCopy.hint}
+              completedSteps={completedSteps}
+              language={language}
+              personalDetails={personalDetails}
+              userRole={userRole}
+              caseInfo={caseInfo}
+              isProcessing={isAnalyzing}
             >
               <PersonalDetailsForm onSubmit={setPersonalDetails} onBack={() => setLanguage(null)} t={t} />
-            </motion.main>
+            </RedactedFlow>
           )}
 
           {!showWelcome && language && personalDetails && !userRole && (
-            <RoleSelection
+            <RedactedFlow
+              key="role-flow"
+              stepTitle={flowCopy.title}
+              stepHint={flowCopy.hint}
+              completedSteps={completedSteps}
+              language={language}
+              personalDetails={personalDetails}
+              userRole={userRole}
+              caseInfo={caseInfo}
+              isProcessing={isAnalyzing}
+            >
+              <RoleSelection
               key="role"
               onSelect={setUserRole}
               onBack={() => setPersonalDetails(null)}
               t={t}
-            />
+              />
+            </RedactedFlow>
           )}
 
           {!showWelcome && language && personalDetails && userRole && (
-            <motion.main
-              key="case"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="mx-auto w-full max-w-7xl px-4 py-8"
+            <RedactedFlow
+              key="case-flow"
+              stepTitle={flowCopy.title}
+              stepHint={flowCopy.hint}
+              completedSteps={completedSteps}
+              language={language}
+              personalDetails={personalDetails}
+              userRole={userRole}
+              caseInfo={caseInfo}
+              isProcessing={isAnalyzing}
             >
-              <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUserRole(null);
-                      resetCaseOnly();
-                    }}
-                    className="mb-4 inline-flex h-10 items-center gap-2 rounded-xl border border-stone-300 bg-white px-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    {t.backToRole}
-                  </button>
-                  <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">{t.caseInfo}</p>
-                  <h1 className="mt-2 max-w-3xl text-3xl font-extrabold tracking-tight text-stone-950 md:text-4xl">
-                    {t.caseHeading}
-                  </h1>
-                  <p className="mt-3 max-w-3xl text-base leading-7 text-stone-600">{t.caseIntro}</p>
-                </div>
-                <div className="rounded-xl border border-teal-200 bg-teal-50/80 px-4 py-3 text-sm font-medium text-teal-900 backdrop-blur">
+              <div className="grid gap-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserRole(null);
+                    resetCaseOnly();
+                  }}
+                  className="inline-flex min-h-11 w-fit items-center gap-2 border border-ink/15 bg-paper px-3 text-sm font-bold text-ink-faded transition hover:bg-paper-dark focus:outline-none focus:ring-2 focus:ring-seal-gold"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  {t.backToRole}
+                </button>
+
+                <div className="border border-seal-gold/40 bg-seal-gold/10 px-4 py-3 text-sm font-bold text-ink">
                   {t.roleLabel}: {userRole === 'lawyer' ? t.roleLawyer : t.roleCommon}
                 </div>
-              </div>
 
-              <Disclaimer t={t} />
+                <Disclaimer t={t} />
 
-              <section className="mt-6">
                 {userRole === 'lawyer' ? (
                   <LawyerCaseForm onSubmit={(info: LawyerCaseInfo) => runAnalysis(info, 'lawyer')} t={t} />
                 ) : (
                   <CommonPersonCaseForm onSubmit={(info: CommonPersonCaseInfo) => runAnalysis(info, 'common')} t={t} />
                 )}
-              </section>
-            </motion.main>
+              </div>
+            </RedactedFlow>
           )}
         </AnimatePresence>
       )}
@@ -388,7 +482,7 @@ function App() {
               </div>
             </div>
             <div className="mx-auto max-w-7xl px-4 py-8">
-              <AIAnalysis analysis={analysis} isLoading={isAnalyzing} t={t} />
+              <AIAnalysis analysis={analysis} metadata={analysisMetadata} isLoading={isAnalyzing} t={t} />
             </div>
           </motion.div>
         )}
@@ -464,8 +558,22 @@ function App() {
       </AnimatePresence>
 
       {!showWelcome && (
-        <footer className="border-t border-stone-200/70 bg-white/60 px-4 py-5 text-center text-sm text-stone-500 backdrop-blur">
-          © {new Date().getFullYear()} {t.appName}. {t.copyright}
+        <MobileBottomNav
+          activeItem={activeView === 'library' ? 'library' : 'case'}
+          hasHistory={caseHistory.length > 0}
+          onHome={() => setShowWelcome(true)}
+          onCase={() => {
+            setActiveView('case');
+            resetCaseOnly();
+          }}
+          onLibrary={() => setActiveView('library')}
+          onHistory={() => setShowHistory(true)}
+        />
+      )}
+
+      {!showWelcome && (
+        <footer className="hidden border-t border-stone-200/70 bg-white/60 px-4 py-5 text-center text-sm text-stone-500 backdrop-blur md:block">
+          &copy; {new Date().getFullYear()} {t.appName}. {t.copyright}
         </footer>
       )}
     </div>

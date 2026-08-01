@@ -1,7 +1,21 @@
 import { constitutionalArticles } from '../data/constitutionalArticles';
-import { currentLawEquivalents } from '../data/currentLawMapping';
-import { getCaseDatasetMatches, type LawDatasetMatch } from './lawDataset';
-import type { Article, CaseSubmission } from '../types';
+import {
+  CURRENT_LAW_MAPPING_LAST_VERIFIED_ON,
+  currentLawEquivalents,
+  getOfficialCitationForLegacyLabel,
+  getOfficialCurrentLawUrl,
+} from '../data/currentLawMapping';
+import { buildRetrievalQuery } from './buildRetrievalQuery';
+import {
+  appendCitationValidationNotice,
+  getAllowedCitationLabelsFromRetrieval,
+  getStaticAllowedCitationLabels,
+  validateCitations,
+  type CitationValidationResult,
+} from './citationValidation';
+import { buildSectionConfidence, getRetrievalStrategy } from './confidenceScoring';
+import { retrieveRelevantLaws, type RetrievedLaw } from './retrieval';
+import type { AnalysisMetadata, AnalysisSource, Article, CaseSubmission, CoverageLevel, RetrievalReference } from '../types';
 
 type CaseType =
   | 'Murder'
@@ -27,6 +41,11 @@ type CaseType =
 
 const IMPORTANT_NOTICE =
   'Indian criminal law references changed after most BNS, BNSS, and BSA provisions came into force on 1 July 2024. Treat older IPC and CrPC references as educational starting points and verify the current law, incident date, and local jurisdiction before acting.';
+
+export interface AnalysisResult {
+  markdown: string;
+  metadata: AnalysisMetadata;
+}
 
 const LAW_MAP: Record<CaseType, string[]> = {
   Murder: ['IPC 302', 'IPC 120B', 'IPC 34', 'IPC 201', 'IPC 297', '21'],
@@ -148,7 +167,7 @@ function detectAllCaseTypes(keywords: string): CaseType[] {
   if (/dowry death|dowry.*died|burnt for dowry|died.*marriage.*dowry|unnatural death.*bride|suicide.*harassment.*dowry/.test(keywords)) {
     types.push('Dowry Death');
   }
-  if (/rash driving|negligent driving|drunk driving|drink and drive|hit and run|ran over|road accident|reckless|overspeed|knocked down/.test(keywords)) {
+  if (/rash driving|negligent driving|drunk driving|drink and drive|hit and run|ran over|road accident|traffic accident|vehicle accident|speeding|overspeed|reckless driving|knocked down|car hit|bike hit|two-wheeler/.test(keywords)) {
     types.push('Rash / Negligent Driving');
   }
   if (/defam|slander|libel|false statement|spread rumou?r|damaged? my reputation|character assassination/.test(keywords)) {
@@ -211,7 +230,270 @@ function getArticleExplanation(article: Article) {
     '14': 'Protects equality before law and equal protection of laws.',
   };
 
-  return explanations[article.number] ?? 'May be relevant based on the reported facts; verify the ingredients against the current provision.';
+  return (
+    COMMON_LANGUAGE_EXPLANATIONS[article.number] ??
+    explanations[article.number] ??
+    'May be relevant based on the reported facts; verify the ingredients against the current provision.'
+  );
+}
+
+const COMMON_LANGUAGE_EXPLANATIONS: Record<string, string> = {
+  'IPC 302': 'This is the serious murder law; it matters when someone is alleged to have intentionally caused another person\'s death.',
+  'IPC 307': 'This covers trying to kill someone even if the person survives; the focus is on the intention and the act done.',
+  'IPC 120B': 'This is used when two or more people allegedly planned a crime together.',
+  'IPC 34': 'This can make each person responsible when a group acts together with the same criminal purpose.',
+  'IPC 201': 'This matters if someone hid, destroyed, or changed evidence after an offence.',
+  'IPC 297': 'This covers disrespectful or unlawful acts involving burial places, funeral rites, or a human body.',
+  'IPC 392': 'This covers robbery, which is theft involving force, fear, or immediate threat.',
+  'IPC 397': 'This is a more serious robbery or dacoity situation involving a deadly weapon, grievous hurt, or an attempt to cause death.',
+  'IPC 398': 'This covers an attempted robbery or dacoity when the person is armed with a deadly weapon.',
+  'IPC 394': 'This matters when someone is hurt while robbery is being committed.',
+  'IPC 395': 'This covers dacoity, which is robbery by a group of five or more people.',
+  'IPC 379': 'This applies when movable property is allegedly taken dishonestly without consent.',
+  'IPC 380': 'This is theft from a house, building, or similar place, so the location makes it more serious.',
+  'IPC 457': 'This covers breaking into or entering a place at night for an unlawful purpose.',
+  'IPC 411': 'This applies to someone who knowingly receives or keeps stolen property.',
+  'IPC 454': 'This covers house-trespass or house-breaking done to commit another offence inside.',
+  'IPC 420': 'This applies when someone is allegedly cheated into handing over money, property, or something valuable.',
+  'IPC 415': 'This defines cheating: dishonest deception that causes loss, harm, or delivery of property.',
+  'IPC 417': 'This is the punishment provision for cheating.',
+  'IPC 468': 'This applies when a forged document is allegedly created to cheat someone.',
+  'IPC 471': 'This applies when someone allegedly uses a forged document as if it were genuine.',
+  'IPC 351': 'This explains assault: creating fear that force is about to be used.',
+  'IPC 352': 'This punishes assault or criminal force when there is no serious provocation defence.',
+  'IPC 323': 'This applies when someone voluntarily causes bodily pain, disease, or injury.',
+  'IPC 504': 'This matters when insults are meant to provoke a fight or disturb public peace.',
+  'IPC 354': 'This protects women from assault or force meant to violate dignity or modesty.',
+  'IPC 354A': 'This covers sexual harassment, such as unwelcome sexual conduct or demands.',
+  'IPC 509': 'This covers words, gestures, or acts intended to insult a woman\'s dignity or modesty.',
+  'IPC 503': 'This defines criminal intimidation: threatening someone with injury to cause fear or force action.',
+  'IPC 506': 'This is the punishment provision for criminal intimidation.',
+  'IPC 507': 'This covers anonymous threats, such as threats sent without revealing the sender.',
+  'IPC 499': 'This covers reputation-harming statements, but there are important legal exceptions.',
+  'IPC 500': 'This is the punishment provision for criminal defamation.',
+  'IPC 498A': 'This applies when a husband or his relatives are accused of cruelty toward a married woman.',
+  'IPC 376': 'This applies to rape allegations and must be handled with survivor safety, privacy, and professional support.',
+  'IPC 228A': 'This protects the identity of survivors in certain sexual offence cases.',
+  'IPC 272': 'This applies when food or drink is allegedly adulterated so it becomes harmful for sale.',
+  'IPC 273': 'This applies when harmful or unsafe food or drink is allegedly sold.',
+  'IPC 441': 'This defines criminal trespass: entering or staying on property to commit an offence, intimidate, insult, or annoy.',
+  'IPC 427': 'This applies when property is damaged and the loss crosses the legal threshold.',
+  'CrPC 145': 'This is a preventive procedure for urgent land or water disputes likely to disturb public peace.',
+  'IPC 363': 'This applies when someone is allegedly taken away from lawful guardianship or from India.',
+  'IPC 364A': 'This applies to kidnapping or abduction linked to ransom or threats of death or serious hurt.',
+  'IPC 366': 'This applies when a woman is kidnapped or abducted to force marriage or sexual exploitation.',
+  'IPC 384': 'This applies when fear is used to force someone to give money, property, or value.',
+  'IPC 386': 'This is a more serious extortion situation involving fear of death or grievous hurt.',
+  'IPC 354D': 'This covers repeated following, contacting, or online monitoring after a woman has shown disinterest.',
+  'IPC 354C': 'This covers watching, recording, or sharing images of a woman in a private act without consent.',
+  'IPC 304B': 'This applies to a woman\'s unnatural death within seven years of marriage linked to dowry cruelty or harassment.',
+  'IPC 304A': 'This applies when rash or negligent conduct causes death, without the intention required for murder.',
+  'IPC 279': 'This applies to rash or negligent driving on a public road that endangers people.',
+  'IPC 337': 'This applies when rash or negligent conduct causes hurt.',
+  'IPC 338': 'This applies when rash or negligent conduct causes grievous hurt.',
+  'IT Act 66C': 'This covers misuse of another person\'s password, identity, account, or digital credentials.',
+  'IT Act 66D': 'This covers online impersonation used to cheat someone, such as fake profiles or fraud messages.',
+  'IT Act 66E': 'This protects privacy against capturing or sharing private images without consent.',
+  'IT Act 67': 'This applies to publishing or sending obscene material electronically.',
+  'DV Act 3': 'This defines domestic violence broadly, including physical, emotional, sexual, verbal, and economic abuse.',
+  'POCSO 3': 'This covers penetrative sexual assault against a child and requires child-protective handling.',
+  'POCSO 7': 'This covers sexual assault against a child without needing penetration.',
+  'POCSO 9': 'This covers aggravated forms of child sexual assault, such as abuse by a person in authority.',
+  'JJ Act 75': 'This protects children from cruelty, assault, neglect, abandonment, or mental or physical suffering.',
+  'CPA 2': 'This helps decide whether the person is a consumer and whether a service or product complaint can be made.',
+  'Drugs and Cosmetics Act 27': 'This applies to serious violations involving unsafe, adulterated, or spurious drugs.',
+  'Rent Act': 'This points to state tenancy protections; the exact rule depends on the state and rental arrangement.',
+  'DP Act 3': 'This punishes giving, taking, or demanding dowry.',
+  'MV Act 134': 'This explains duties after a road accident, such as helping the injured and reporting to police.',
+  '21': 'This protects life, liberty, dignity, safety, and fair legal procedure.',
+  '19': 'This protects free speech, but speech can still be limited by valid laws such as defamation.',
+  '15': 'This protects citizens from discrimination on grounds like religion, race, caste, sex, or place of birth.',
+  '14': 'This means the law should treat people equally and fairly.',
+  '22': 'This gives basic safeguards after arrest, including being told the grounds and access to a lawyer.',
+};
+
+function formatLawExplanationBullet(article: Article) {
+  return `- ${getFullLabel(article)}: ${article.title}. Source: local fallback rule mapping. In simple words: ${getArticleExplanation(article)}`;
+}
+
+const thinCoverageTypes = new Set<CaseType>([
+  'Consumer / Medical Negligence',
+  'Landlord / Tenancy',
+  'Defamation',
+]);
+
+function getEngineLabel(source: AnalysisSource) {
+  return source === 'gemini'
+    ? 'Gemini live AI, grounded with local retrieval context'
+    : 'Local educational rule engine fallback';
+}
+
+function assessCoverage(caseTypes: CaseType[], retrievedLaws: RetrievedLaw[]): {
+  level: CoverageLevel;
+  summary: string;
+} {
+  if (caseTypes.length === 0) {
+    return {
+      level: 'thin',
+      summary:
+        'No known offence pattern matched strongly. Treat this as a broad triage report and add more facts before relying on the section list.',
+    };
+  }
+
+  if (retrievedLaws.length === 0) {
+    return {
+      level: 'thin',
+      summary:
+        'The local law index did not return close matches. Verify every cited section directly against official law sources.',
+    };
+  }
+
+  if (caseTypes.some((type) => thinCoverageTypes.has(type)) || caseTypes.length > 3 || retrievedLaws.length < 3) {
+    return {
+      level: 'moderate',
+      summary:
+        'The app matched a known issue area, but coverage is narrower or overlaps multiple domains. Use the report as a research starting point.',
+    };
+  }
+
+  return {
+    level: 'strong',
+    summary:
+      'The facts matched a well-covered offence pattern and multiple local law records. Still verify ingredients, amendments, and jurisdiction.',
+  };
+}
+
+function getOfficialCitationReferences(relevantArticles: Article[]): RetrievalReference[] {
+  return relevantArticles
+    .map((article) => {
+      const equivalent = currentLawEquivalents[article.number];
+      if (!equivalent) return null;
+
+      const url = getOfficialCurrentLawUrl(equivalent.current);
+      if (!url) return null;
+
+      return {
+        title: `${getFullLabel(article)} -> ${equivalent.current}: ${equivalent.subject}`,
+        url,
+        source: 'India Code',
+      };
+    })
+    .filter((reference): reference is RetrievalReference => Boolean(reference));
+}
+
+function getCaseTypes(caseInfo: Pick<CaseSubmission, 'incidentType' | 'description'>) {
+  return detectAllCaseTypes(`${caseInfo.incidentType} ${caseInfo.description}`.toLowerCase());
+}
+
+function getPreferredSectionLabels(caseTypes: CaseType[]) {
+  const legacyLabels = caseTypes.flatMap((type) => LAW_MAP[type]);
+  return Array.from(
+    new Set(
+      legacyLabels.flatMap((label) => {
+        const equivalent = currentLawEquivalents[label];
+        return equivalent ? [label, equivalent.current] : [label];
+      }),
+    ),
+  );
+}
+
+function retrieveLawsForCase(caseInfo: CaseSubmission) {
+  const caseTypes = getCaseTypes(caseInfo);
+  const retrievalQuery = buildRetrievalQuery(caseInfo, {
+    issueTags: caseTypes,
+    preferredSectionLabels: getPreferredSectionLabels(caseTypes),
+  });
+
+  return retrieveRelevantLaws(retrievalQuery, 8);
+}
+
+function validateReportCitations(markdown: string, retrievedLaws: RetrievedLaw[]): CitationValidationResult {
+  return validateCitations(markdown, [
+    ...getStaticAllowedCitationLabels(),
+    ...getAllowedCitationLabelsFromRetrieval(retrievedLaws),
+  ]);
+}
+
+function buildMetadata(
+  caseInfo: CaseSubmission,
+  source: AnalysisSource,
+  retrievedLaws: RetrievedLaw[],
+  citationValidation: CitationValidationResult,
+): AnalysisMetadata {
+  const caseTypes = getCaseTypes(caseInfo);
+  const coverage = assessCoverage(caseTypes, retrievedLaws);
+  const relevantArticles = findRelevantArticles(caseInfo);
+  const retrievedReferences = retrievedLaws
+    .filter((match) => Boolean(match.url))
+    .slice(0, 5)
+    .map((match) => ({
+      title: match.sectionNumber ? `${match.sectionNumber} - ${match.actName}` : match.actName,
+      url: match.url,
+      source: match.source,
+    }));
+
+  return {
+    source,
+    coverageLevel: coverage.level,
+    coverageSummary: coverage.summary,
+    retrievalCount: retrievedLaws.length,
+    retrievalStrategy: getRetrievalStrategy(retrievedLaws),
+    verifiedOn: CURRENT_LAW_MAPPING_LAST_VERIFIED_ON,
+    references: [...getOfficialCitationReferences(relevantArticles), ...retrievedReferences].slice(0, 8),
+    sectionConfidence: buildSectionConfidence({
+      source,
+      coverageLevel: coverage.level,
+      retrievedLaws,
+      citationValidation,
+    }),
+    citationValidation,
+  };
+}
+
+function buildTrustSection(metadata: AnalysisMetadata) {
+  const coverageLabel = metadata.coverageLevel[0].toUpperCase() + metadata.coverageLevel.slice(1);
+
+  return [
+    '### Trust & Retrieval Signals',
+    `Report engine: ${getEngineLabel(metadata.source)}`,
+    `Coverage indicator: ${coverageLabel}`,
+    `Coverage note: ${metadata.coverageSummary}`,
+    `Retrieval strategy: ${metadata.retrievalStrategy}`,
+    `Retrieved law records: ${metadata.retrievalCount}`,
+    `Citation validation: ${metadata.citationValidation.unsupportedCitations.length === 0 ? `${metadata.citationValidation.supportedCount} supported citation(s), no unsupported section labels detected` : `low confidence for ${metadata.citationValidation.unsupportedCitations.join(', ')}`}`,
+    `Section confidence: laws ${metadata.sectionConfidence['Indicative Laws and Sections']}, procedure ${metadata.sectionConfidence['Procedural Aspects']}, analysis ${metadata.sectionConfidence['Detailed Legal Analysis']}`,
+    `BNS/BNSS mapping table last verified on: ${metadata.verifiedOn}`,
+  ].join('\n');
+}
+
+function buildOfficialCitationSection(relevantArticles: Article[]) {
+  const lines = relevantArticles
+    .map((article) => {
+      const equivalent = currentLawEquivalents[article.number];
+      if (!equivalent) return null;
+
+      const url = getOfficialCitationForLegacyLabel(article.number);
+      const currentLabel = url ? `[${equivalent.current}](${url})` : equivalent.current;
+      return `- ${getFullLabel(article)} maps to ${currentLabel} - ${equivalent.subject}. Source: local current-law mapping table. In simple words: ${getArticleExplanation(article)}`;
+    })
+    .filter((line): line is string => Boolean(line));
+
+  if (lines.length === 0) {
+    return [
+      '### Official Section Citations',
+      '- No direct BNS/BNSS/BSA section citation is available from the local mapping for this fact pattern. Use the Law Library and India Code search before relying on any section.',
+    ].join('\n');
+  }
+
+  return ['### Official Section Citations', ...lines].join('\n');
+}
+
+function attachTrustSections(markdown: string, metadata: AnalysisMetadata, caseInfo: CaseSubmission) {
+  return [
+    buildTrustSection(metadata),
+    buildOfficialCitationSection(findRelevantArticles(caseInfo)),
+    markdown.trim(),
+  ].join('\n\n');
 }
 
 function buildProceduralAspects(caseTypes: CaseType[]) {
@@ -277,15 +559,21 @@ function buildCurrentLawMapping(relevant: Article[]) {
     .map((article) => {
       const equivalent = currentLawEquivalents[article.number];
       if (!equivalent) return null;
-      return `- ${getFullLabel(article)} maps to ${equivalent.current} - ${equivalent.subject}.`;
+      const url = getOfficialCitationForLegacyLabel(article.number);
+      const currentLabel = url ? `[${equivalent.current}](${url})` : equivalent.current;
+      return `- ${getFullLabel(article)} maps to ${currentLabel} - ${equivalent.subject}. Source: local current-law mapping table. In simple words: ${getArticleExplanation(article)}`;
     })
     .filter((line): line is string => Boolean(line));
 
   if (mapped.length === 0) {
-    return '- No direct BNS/BNSS/BSA equivalent is listed here. Where IPC, CrPC, or Evidence Act sections were cited, confirm the current provision on India Code before relying on it.';
+    return [
+      `- Mapping table last verified on ${CURRENT_LAW_MAPPING_LAST_VERIFIED_ON}.`,
+      '- No direct BNS/BNSS/BSA equivalent is listed here. Where IPC, CrPC, or Evidence Act sections were cited, confirm the current provision on India Code before relying on it.',
+    ].join('\n');
   }
 
   return [
+    `- Mapping table last verified on ${CURRENT_LAW_MAPPING_LAST_VERIFIED_ON}.`,
     ...mapped,
     '- Statutes such as the IT Act, POCSO, the DV Act, and the Consumer Protection Act were not replaced in 2024 and continue in force.',
   ].join('\n');
@@ -302,33 +590,32 @@ function buildConstitutionalImplications(relevant: Article[]) {
     .join('\n');
 }
 
-function formatDatasetMatches(matches: LawDatasetMatch[]) {
+function formatRetrievedLawMatches(matches: RetrievedLaw[]) {
   if (matches.length === 0) {
-    return '- No close dataset match was found. Search the Law Library with broader keywords.';
+    return '- No close retrieved law record was found. Search the Law Library with broader keywords.';
   }
 
   return matches
     .map((match) => {
-      const date = match.commencementDate || match.publishedDate || 'date unavailable';
-      return `- ${match.title} (${match.place}, ${date}) - ${match.url}`;
+      const section = match.sectionNumber ? `${match.sectionNumber}: ` : '';
+      const source = match.retrievalSource === 'embedding' ? 'embedding retrieval' : 'keyword fallback';
+      const url = match.url ? ` - ${match.url}` : '';
+      return `- ${section}${match.actName} (${match.source}, ${match.place}). Source: ${source}. Similarity: ${match.similarity.toFixed(2)}${url}`;
     })
     .join('\n');
 }
 
-function buildLocalAnalysis(caseInfo: CaseSubmission) {
-  const keywords = `${caseInfo.incidentType} ${caseInfo.description}`.toLowerCase();
-  const caseTypes = detectAllCaseTypes(keywords);
+function buildLocalAnalysis(caseInfo: CaseSubmission, retrievedLaws: RetrievedLaw[]) {
+  const caseTypes = getCaseTypes(caseInfo);
   const relevantArticles = findRelevantArticles(caseInfo);
-  const datasetMatches = getCaseDatasetMatches(caseInfo, 6);
   const caseTypeLabel = caseTypes.length > 0 ? caseTypes.join(', ') : 'General Legal Matter';
 
   const primaryLaws = relevantArticles.slice(0, 10);
   const laws = primaryLaws.length
-    ? primaryLaws.map((article) => `- ${getFullLabel(article)}: ${article.title}`).join('\n')
+    ? primaryLaws.map(formatLawExplanationBullet).join('\n')
     : '- No specific local match found. Add more facts for a sharper classification.';
 
   const lawReasons = primaryLaws
-    .slice(0, 5)
     .map((article) => `- ${getFullLabel(article)}: ${getArticleExplanation(article)}`)
     .join('\n');
 
@@ -347,7 +634,7 @@ function buildLocalAnalysis(caseInfo: CaseSubmission) {
     buildCurrentLawMapping(relevantArticles),
     '',
     '### Dataset Matches',
-    formatDatasetMatches(datasetMatches),
+    formatRetrievedLawMatches(retrievedLaws),
     '',
     '### Detailed Legal Analysis',
     `Reported Issue: ${caseInfo.incidentType}`,
@@ -373,13 +660,23 @@ function buildLocalAnalysis(caseInfo: CaseSubmission) {
 }
 
 async function analyzeWithProxy(caseInfo: CaseSubmission): Promise<string | null> {
-  const datasetMatches = getCaseDatasetMatches(caseInfo, 8).map((match) => ({
-    title: match.title,
-    source: match.source,
-    place: match.place,
-    date: match.commencementDate || match.publishedDate || 'date unavailable',
-    url: match.url,
-  }));
+  const relevantArticles = findRelevantArticles(caseInfo);
+  const officialCitations = relevantArticles
+    .map((article) => {
+      const equivalent = currentLawEquivalents[article.number];
+      if (!equivalent) return null;
+
+      const url = getOfficialCitationForLegacyLabel(article.number);
+      if (!url) return null;
+
+      return {
+        legacyLabel: getFullLabel(article),
+        currentLabel: equivalent.current,
+        subject: equivalent.subject,
+        url,
+      };
+    })
+    .filter(Boolean);
 
   try {
     const response = await fetch('/api/analyze', {
@@ -392,7 +689,7 @@ async function analyzeWithProxy(caseInfo: CaseSubmission): Promise<string | null
           date: caseInfo.date,
           location: caseInfo.location,
         },
-        datasetMatches,
+        officialCitations,
       }),
     });
 
@@ -425,10 +722,33 @@ export async function fetchLegalWebResults(query: string): Promise<Array<{ title
   ];
 }
 
-export async function analyzeCaseWithAI(caseInfo: CaseSubmission) {
+export function buildLocalAnalysisResult(caseInfo: CaseSubmission, source: AnalysisSource = 'local-rule-engine'): AnalysisResult {
+  const retrievedLaws = retrieveLawsForCase(caseInfo);
+  const localMarkdown = buildLocalAnalysis(caseInfo, retrievedLaws.slice(0, 6));
+  const citationValidation = validateReportCitations(localMarkdown, retrievedLaws);
+  const checkedMarkdown = appendCitationValidationNotice(localMarkdown, citationValidation);
+  const metadata = buildMetadata(caseInfo, source, retrievedLaws, citationValidation);
+
+  return {
+    markdown: attachTrustSections(checkedMarkdown, metadata, caseInfo),
+    metadata,
+  };
+}
+
+export async function analyzeCaseWithAI(caseInfo: CaseSubmission): Promise<AnalysisResult> {
+  const retrievedLaws = retrieveLawsForCase(caseInfo);
   const proxyResult = await analyzeWithProxy(caseInfo);
-  if (proxyResult) return proxyResult;
+
+  if (proxyResult) {
+    const citationValidation = validateReportCitations(proxyResult, retrievedLaws);
+    const checkedMarkdown = appendCitationValidationNotice(proxyResult, citationValidation);
+    const metadata = buildMetadata(caseInfo, 'gemini', retrievedLaws, citationValidation);
+    return {
+      markdown: attachTrustSections(checkedMarkdown, metadata, caseInfo),
+      metadata,
+    };
+  }
 
   await new Promise((resolve) => setTimeout(resolve, 400));
-  return buildLocalAnalysis(caseInfo);
+  return buildLocalAnalysisResult(caseInfo);
 }

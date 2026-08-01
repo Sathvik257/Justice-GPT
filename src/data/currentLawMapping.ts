@@ -15,6 +15,38 @@ export interface CurrentLawEquivalent {
   subject: string;
 }
 
+export const CURRENT_LAW_MAPPING_LAST_VERIFIED_ON = '2026-08-01';
+
+const INDIA_CODE_UNION_HANDLE = '123456789%2F1362';
+const INDIA_CODE_BNS_ACT_ID = 'AC_CEN_5_23_00048_2023-45_1719292564123';
+const INDIA_CODE_BNSS_ACT_ID = 'AC_CEN_5_23_00049_202346_1719552320687';
+
+function getBaseSectionNumber(label: string): number | null {
+  const match = label.match(/^(?:BNS|BNSS)\s+(\d+)/);
+  return match ? Number(match[1]) : null;
+}
+
+export function getOfficialCurrentLawUrl(currentLabel: string): string | null {
+  const section = getBaseSectionNumber(currentLabel);
+  if (!section) return null;
+
+  if (currentLabel.startsWith('BNS ')) {
+    const sectionId = 90365 + section;
+    return `https://www.indiacode.nic.in/show-data?abv=CEN&actid=${INDIA_CODE_BNS_ACT_ID}&orderno=${section}&orgactid=${INDIA_CODE_BNS_ACT_ID}&sectionId=${sectionId}&sectionno=${section}&statehandle=${INDIA_CODE_UNION_HANDLE}`;
+  }
+
+  if (currentLabel.startsWith('BNSS ')) {
+    return `https://www.indiacode.nic.in/show-data?abv=CEN&actid=${INDIA_CODE_BNSS_ACT_ID}&orderno=${section}&orgactid=${INDIA_CODE_BNSS_ACT_ID}&statehandle=${INDIA_CODE_UNION_HANDLE}`;
+  }
+
+  return null;
+}
+
+export function getOfficialCitationForLegacyLabel(legacyLabel: string): string | null {
+  const equivalent = currentLawEquivalents[legacyLabel];
+  return equivalent ? getOfficialCurrentLawUrl(equivalent.current) : null;
+}
+
 /**
  * Keyed by the legacy label used in `LAW_MAP` (e.g. "IPC 302", "CrPC 145").
  * Statutes that were NOT replaced in 2024 (IT Act, POCSO, DV Act, CPA, JJ Act,
