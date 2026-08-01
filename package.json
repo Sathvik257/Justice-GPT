@@ -14,6 +14,7 @@
     "typecheck:all": "npm run typecheck && npm run typecheck:server",
     "lint": "eslint .",
     "preview": "vite preview",
+    "train:dataset": "node scripts/train-dataset.mjs",
     "prepare:law-data": "node scripts/prepare-law-dataset.mjs",
     "prepare:embeddings": "node scripts/generate-embeddings.ts",
     "eval:accuracy": "node scripts/eval-accuracy.ts"

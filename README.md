@@ -93,8 +93,14 @@ npm run build
 npm run typecheck:all
 npm run lint
 npm run preview
+npm run train:dataset
 npm run prepare:law-data
 ```
+
+`npm run train:dataset` is the safest local training command. It rebuilds the
+raw Kaggle export when the CSV is present, otherwise it uses the already
+generated `src/data/lawsAndActs.ts`, regenerates `src/data/lawEmbeddings.json`,
+and runs the retrieval accuracy evaluation.
 
 `npm run prepare:law-data` regenerates `src/data/lawsAndActs.ts` from:
 
