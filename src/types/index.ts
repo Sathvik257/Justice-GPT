@@ -6,8 +6,6 @@ export interface Article {
   type?: string;
 }
 
-export type Language = 'en' | 'hi' | 'te';
-
 export type UserRole = 'lawyer' | 'common';
 
 export type AnalysisSource = 'gemini' | 'local-rule-engine';

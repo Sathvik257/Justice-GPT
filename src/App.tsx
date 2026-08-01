@@ -10,13 +10,11 @@ import type {
   AnalysisRecord,
   CaseSubmission,
   CommonPersonCaseInfo,
-  Language,
   LawyerCaseInfo,
   PersonalDetails,
   UserRole,
 } from './types';
 import WelcomeScreen from './components/WelcomeScreen';
-import LanguageSelection from './components/LanguageSelection';
 import PersonalDetailsForm from './components/PersonalDetailsForm';
 import RoleSelection from './components/RoleSelection';
 import { LawyerCaseForm } from './components/LawyerCaseForm';
@@ -28,7 +26,6 @@ import { RedactedFlow } from './components/onboarding/RedactedFlow';
 
 type ActiveView = 'case' | 'library';
 
-const LANGUAGE_KEY = 'justice-gpt-language';
 const HISTORY_KEY = 'justice-gpt-history';
 
 function readStorage(key: string) {
@@ -46,11 +43,6 @@ function writeStorage(key: string, value: string) {
   } catch {
     return false;
   }
-}
-
-function loadLanguage(): Language | null {
-  const stored = readStorage(LANGUAGE_KEY);
-  return stored === 'en' || stored === 'hi' || stored === 'te' ? stored : null;
 }
 
 function getRecordId() {
@@ -141,17 +133,11 @@ function ProgressStepper({ currentStep, steps }: { currentStep: number; steps: s
 function getFlowCopy(currentStep: number, t: Translation) {
   if (currentStep === 0) {
     return {
-      title: t.selectLanguage,
-      hint: 'Choose the intake language first. The case file preview will lift its first redaction as soon as this is set.',
-    };
-  }
-  if (currentStep === 1) {
-    return {
       title: t.detailsHeading,
       hint: 'Add the person using this report. These details remain local unless you clear saved reports.',
     };
   }
-  if (currentStep === 2) {
+  if (currentStep === 1) {
     return {
       title: t.roleHeading,
       hint: 'Tell the app whether to frame questions for legal preparation or general guidance.',
@@ -165,7 +151,6 @@ function getFlowCopy(currentStep: number, t: Translation) {
 
 function App() {
   const [showWelcome, setShowWelcome] = useState(true);
-  const [language, setLanguage] = useState<Language | null>(loadLanguage);
   const [personalDetails, setPersonalDetails] = useState<PersonalDetails | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [caseInfo, setCaseInfo] = useState<CaseSubmission | null>(null);
@@ -182,22 +167,16 @@ function App() {
     writeStorage(HISTORY_KEY, JSON.stringify(caseHistory));
   }, [caseHistory]);
 
-  const selectLanguage = (next: Language) => {
-    setLanguage(next);
-    writeStorage(LANGUAGE_KEY, next);
-  };
-
-  const t: Translation = getTranslation(language);
-  const steps = [t.stepLanguage, t.stepDetails, t.stepRole, t.stepCase, t.stepReport];
+  const t: Translation = getTranslation();
+  const steps = [t.stepDetails, t.stepRole, t.stepCase, t.stepReport];
 
   const currentStep = useMemo(() => {
-    if (!language) return 0;
-    if (!personalDetails) return 1;
-    if (!userRole) return 2;
-    if (!caseInfo || !showAnalysis) return 3;
-    return 4;
-  }, [caseInfo, language, personalDetails, showAnalysis, userRole]);
-  const completedSteps = Number(Boolean(language)) + Number(Boolean(personalDetails)) + Number(Boolean(userRole)) + Number(Boolean(caseInfo));
+    if (!personalDetails) return 0;
+    if (!userRole) return 1;
+    if (!caseInfo || !showAnalysis) return 2;
+    return 3;
+  }, [caseInfo, personalDetails, showAnalysis, userRole]);
+  const completedSteps = Number(Boolean(personalDetails)) + Number(Boolean(userRole)) + Number(Boolean(caseInfo));
   const flowCopy = getFlowCopy(currentStep, t);
 
   const resetCaseOnly = () => {
@@ -211,7 +190,6 @@ function App() {
   const startOver = () => {
     setShowWelcome(false);
     setActiveView('case');
-    setLanguage(null);
     setPersonalDetails(null);
     setUserRole(null);
     resetCaseOnly();
@@ -357,50 +335,27 @@ function App() {
             <WelcomeScreen key="welcome" onEnter={() => setShowWelcome(false)} t={t} />
           )}
 
-          {!showWelcome && !language && (
-            <RedactedFlow
-              key="language-flow"
-              stepTitle={flowCopy.title}
-              stepHint={flowCopy.hint}
-              completedSteps={completedSteps}
-              language={language}
-              personalDetails={personalDetails}
-              userRole={userRole}
-              caseInfo={caseInfo}
-              isProcessing={isAnalyzing}
-            >
-              <LanguageSelection
-              key="language"
-              onSelect={selectLanguage}
-              onBack={() => setShowWelcome(true)}
-              t={t}
-              />
-            </RedactedFlow>
-          )}
-
-          {!showWelcome && language && !personalDetails && (
+          {!showWelcome && !personalDetails && (
             <RedactedFlow
               key="details-flow"
               stepTitle={flowCopy.title}
               stepHint={flowCopy.hint}
               completedSteps={completedSteps}
-              language={language}
               personalDetails={personalDetails}
               userRole={userRole}
               caseInfo={caseInfo}
               isProcessing={isAnalyzing}
             >
-              <PersonalDetailsForm onSubmit={setPersonalDetails} onBack={() => setLanguage(null)} t={t} />
+              <PersonalDetailsForm onSubmit={setPersonalDetails} onBack={() => setShowWelcome(true)} t={t} />
             </RedactedFlow>
           )}
 
-          {!showWelcome && language && personalDetails && !userRole && (
+          {!showWelcome && personalDetails && !userRole && (
             <RedactedFlow
               key="role-flow"
               stepTitle={flowCopy.title}
               stepHint={flowCopy.hint}
               completedSteps={completedSteps}
-              language={language}
               personalDetails={personalDetails}
               userRole={userRole}
               caseInfo={caseInfo}
@@ -415,13 +370,12 @@ function App() {
             </RedactedFlow>
           )}
 
-          {!showWelcome && language && personalDetails && userRole && (
+          {!showWelcome && personalDetails && userRole && (
             <RedactedFlow
               key="case-flow"
               stepTitle={flowCopy.title}
               stepHint={flowCopy.hint}
               completedSteps={completedSteps}
-              language={language}
               personalDetails={personalDetails}
               userRole={userRole}
               caseInfo={caseInfo}

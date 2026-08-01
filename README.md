@@ -1,6 +1,6 @@
 # Justice GPT
 
-Justice GPT is a Vite + React legal education app for Indian-law case triage. It guides users through language selection, personal details, role selection, case facts, and a structured AI-assisted report.
+Justice GPT is a Vite + React legal education app for Indian-law case triage. It guides users through personal details, role selection, case facts, and a structured English legal-education report.
 
 The app uses two knowledge paths:
 

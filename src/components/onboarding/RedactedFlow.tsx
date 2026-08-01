@@ -5,14 +5,13 @@
  */
 import { useMemo, useState } from 'react';
 import { Eye, FileLock2, PenLine } from 'lucide-react';
-import type { CaseSubmission, Language, PersonalDetails, UserRole } from '../../types';
+import type { CaseSubmission, PersonalDetails, UserRole } from '../../types';
 import { RedactionBar } from './RedactionBar';
 
 interface RedactedFlowProps {
   stepTitle: string;
   stepHint: string;
   completedSteps: number;
-  language: Language | null;
   personalDetails: PersonalDetails | null;
   userRole: UserRole | null;
   caseInfo: CaseSubmission | null;
@@ -21,13 +20,6 @@ interface RedactedFlowProps {
 }
 
 type MobilePane = 'form' | 'preview';
-
-function getLanguageLabel(language: Language | null) {
-  if (language === 'hi') return 'Hindi selected for intake';
-  if (language === 'te') return 'Telugu selected for intake';
-  if (language === 'en') return 'English selected for intake';
-  return 'Awaiting language selection';
-}
 
 function getRoleLabel(role: UserRole | null) {
   if (role === 'lawyer') return 'Professional posture: Lawyer / legal preparer';
@@ -46,7 +38,6 @@ export const RedactedFlow: React.FC<RedactedFlowProps> = ({
   stepTitle,
   stepHint,
   completedSteps,
-  language,
   personalDetails,
   userRole,
   caseInfo,
@@ -58,41 +49,36 @@ export const RedactedFlow: React.FC<RedactedFlowProps> = ({
   const bars = useMemo(
     () => [
       {
-        label: 'Case file language',
-        revealedAt: 1,
-        preview: getLanguageLabel(language),
-      },
-      {
         label: 'Identity sheet',
-        revealedAt: 2,
+        revealedAt: 1,
         preview: personalDetails
           ? `Prepared for ${personalDetails.name}, age ${personalDetails.age}. Contact verified locally.`
           : 'User identity and contact details are still redacted.',
       },
       {
         label: 'Case classification',
-        revealedAt: 3,
+        revealedAt: 2,
         preview: getRoleLabel(userRole),
       },
       {
         label: 'Indicative laws',
-        revealedAt: 4,
+        revealedAt: 3,
         preview: getCasePreview(caseInfo),
       },
       {
         label: 'Procedure map',
-        revealedAt: 4,
+        revealedAt: 3,
         preview: isProcessing ? 'Matching facts to FIR, investigation, trial, and appeal pathways...' : getCasePreview(caseInfo),
       },
       {
         label: 'Action steps',
-        revealedAt: 4,
+        revealedAt: 3,
         preview: isProcessing
           ? 'Evidence preservation, current-law citations, and next steps are being compiled.'
           : 'Final action plan unlocks after case facts are submitted.',
       },
     ],
-    [caseInfo, isProcessing, language, personalDetails, userRole],
+    [caseInfo, isProcessing, personalDetails, userRole],
   );
 
   return (
