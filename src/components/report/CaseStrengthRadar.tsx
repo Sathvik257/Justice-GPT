@@ -41,7 +41,7 @@ export const CaseStrengthRadar: React.FC<CaseStrengthRadarProps> = ({ scores }) 
   const selected = scores[selectedIndex];
 
   return (
-    <section className="border border-ink/15 bg-paper p-5 shadow-insetPaper print:hidden" aria-labelledby="radar-title">
+    <section className="min-w-0 border border-ink/15 bg-paper p-5 shadow-insetPaper print:hidden" aria-labelledby="radar-title">
       <div className="mb-4">
         <p className="font-mono text-xs font-bold uppercase tracking-[0.24em] text-stamp-red">Case strength radar</p>
         <h3 id="radar-title" className="mt-1 font-ledger text-2xl font-black text-ink">
@@ -49,7 +49,7 @@ export const CaseStrengthRadar: React.FC<CaseStrengthRadarProps> = ({ scores }) 
         </h3>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-center">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-center">
         <div className="mx-auto w-full max-w-[320px]">
           <svg className="radar-chart h-auto w-full" viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Case strength radar chart">
             {[0.25, 0.5, 0.75, 1].map((scale) => (

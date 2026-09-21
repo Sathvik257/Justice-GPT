@@ -211,6 +211,19 @@
     transform-origin: center;
   }
 
+  .constellation-link {
+    stroke-dasharray: 520;
+    stroke-dashoffset: 520;
+    animation: constellation-draw 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .constellation-node {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: constellation-node-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
   .living-statute-row {
     position: relative;
     overflow: hidden;
@@ -371,6 +384,14 @@
   50% { filter: drop-shadow(0 0 9px rgba(163, 49, 42, 0.75)); }
 }
 
+@keyframes constellation-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes constellation-node-in {
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 @keyframes statute-reveal {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
@@ -456,6 +477,13 @@
   }
   .subway-current-pulse {
     filter: none;
+  }
+  .constellation-link {
+    stroke-dashoffset: 0;
+  }
+  .constellation-node {
+    opacity: 1;
+    transform: none;
   }
 }
 

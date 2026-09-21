@@ -19,6 +19,7 @@ import type { Translation } from '../lib/i18n';
 import { getCaseStrengthScores } from '../lib/caseStrength';
 import { LawTransitionCard } from './law/LawTransitionCard';
 import { CaseStrengthRadar } from './report/CaseStrengthRadar';
+import { LegalConstellation } from './report/LegalConstellation';
 import { ProceduralSubwayMap } from './report/ProceduralSubwayMap';
 import type { AnalysisMetadata, LawTransitionDetails, ProcedureStage } from '../types';
 
@@ -379,7 +380,7 @@ function LawTransitionPanel({ items }: { items: LawTransitionItem[] }) {
       className="rounded-lg border border-teal-200 bg-[#fbfffdf2] p-5 shadow-sm print:hidden"
       aria-labelledby="living-statute-title"
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Living Statute</p>
           <h3 id="living-statute-title" className="mt-1 text-xl font-bold text-stone-950">
@@ -497,9 +498,9 @@ export const AIAnalysis: React.FC<AIAnalysisProps> = ({ analysis, metadata, isLo
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 24 }}
       transition={{ duration: 0.45 }}
-      className="mx-auto w-full max-w-5xl rounded-lg border border-stone-200 bg-white shadow-sm print:border-none print:shadow-none"
+      className="mx-auto w-full max-w-5xl overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm print:border-none print:shadow-none"
     >
-      <div className="flex flex-col gap-4 border-b border-stone-200 px-5 py-5 sm:flex-row sm:items-center sm:justify-between print:hidden">
+      <div className="flex min-w-0 flex-col gap-4 border-b border-stone-200 px-5 py-5 sm:flex-row sm:items-center sm:justify-between print:hidden">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">{t.aiAnalysis}</p>
           <h2 className="mt-1 text-2xl font-bold text-stone-950">{t.reportTitle}</h2>
@@ -562,7 +563,7 @@ export const AIAnalysis: React.FC<AIAnalysisProps> = ({ analysis, metadata, isLo
         )}
       </div>
 
-      <div ref={printRef} className="p-5 sm:p-8 print:p-0">
+      <div ref={printRef} className="min-w-0 p-5 sm:p-8 print:p-0">
         {isLoading ? (
           <div className="flex min-h-[360px] flex-col items-center justify-center gap-5 text-center">
             <div className="relative flex h-20 w-20 items-center justify-center">
@@ -584,10 +585,10 @@ export const AIAnalysis: React.FC<AIAnalysisProps> = ({ analysis, metadata, isLo
         ) : sections.length > 0 ? (
           <div className="grid gap-5">
             <nav
-              className="sticky top-0 z-10 -mx-5 border-y border-ink/10 bg-paper/95 px-5 py-2 backdrop-blur md:hidden print:hidden"
+              className="sticky top-0 z-10 -mx-5 overflow-x-auto border-y border-ink/10 bg-paper/95 px-5 py-2 backdrop-blur md:hidden print:hidden"
               aria-label="Report sections"
             >
-              <div className="flex gap-2 overflow-x-auto">
+              <div className="flex w-max gap-2">
                 {sections
                   .filter((section) =>
                     /Classification|Laws|Citations|Procedure|Precedents|Action|Constitutional/.test(section.title),
@@ -605,8 +606,16 @@ export const AIAnalysis: React.FC<AIAnalysisProps> = ({ analysis, metadata, isLo
               </div>
             </nav>
 
-            <div className="grid gap-5">
+            <div className="grid min-w-0 gap-5">
               <LawTransitionPanel items={lawTransitions} />
+              <LegalConstellation
+                sections={sections}
+                lawTransitions={lawTransitions}
+                stages={procedureData.stages}
+                currentStageIndex={procedureData.currentStageIndex}
+                metadata={metadata}
+                caseStrengthScores={caseStrengthScores}
+              />
               <ProceduralSubwayMap
                 stages={procedureData.stages}
                 currentStageIndex={procedureData.currentStageIndex}

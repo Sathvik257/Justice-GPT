@@ -30,7 +30,7 @@ export const ProceduralSubwayMap: React.FC<ProceduralSubwayMapProps> = ({ stages
 
   return (
     <section className="border border-ink/15 bg-paper p-5 shadow-insetPaper print:hidden" aria-labelledby="subway-title">
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-4 flex min-w-0 flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="font-mono text-xs font-bold uppercase tracking-[0.24em] text-stamp-red">
             Procedural subway map
@@ -44,7 +44,7 @@ export const ProceduralSubwayMap: React.FC<ProceduralSubwayMapProps> = ({ stages
         </span>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.36fr)] lg:items-start">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.36fr)] lg:items-start">
         <div className="lg:hidden">
           <svg
             className="h-auto w-full"
